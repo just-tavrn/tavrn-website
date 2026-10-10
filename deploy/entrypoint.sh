@@ -4,7 +4,7 @@
 # Starts Caddy with the website's Caddyfile. Caddy cannot rewrite one variable into another, so the WebSocket URL of
 # the delegation document is derived here from TAVRN_NODE_URL (https -> wss, http -> ws, plus /api/v1/ws) unless
 # TAVRN_NODE_WS_URL is set explicitly. The default must match the one in the Caddyfile. It also checks the two
-# values of the known-issues proxy (GITHUB_ORG, GITHUB_READ_TOKEN) and prepares the imprint and contact details that
+# values of the GitHub proxies (GITHUB_ORG, GITHUB_READ_TOKEN) and prepares the imprint and contact details that
 # Caddy fills into the two legal pages (TAVRN_IMPRINT_*, TAVRN_CONTACT_EMAIL, TAVRN_NODE_HOST).
 set -eu
 
@@ -17,7 +17,7 @@ for var in TAVRN_APP_URL TAVRN_NODE_URL TAVRN_NODE_WS_URL UPTIME_KUMA_URL; do
   if [ -n "$value" ]; then export "$var=${value%/}"; fi
 done
 
-# The known-issues proxy (/gh/issues). Caddy substitutes these values into the Caddyfile as text, so only what a
+# The GitHub proxies (/gh/issues, /gh/releases/*, /gh/repos/web). Caddy substitutes these values into the Caddyfile as text, so only what a
 # GitHub organization name or token can contain gets through. GITHUB_ORG also accepts the organization's URL.
 org="${GITHUB_ORG:-just-tavrn}"
 org="$(printf '%s' "$org" | tr -d '[:space:]')"
@@ -36,7 +36,7 @@ export GITHUB_ORG="$org"
 token="$(printf '%s' "${GITHUB_READ_TOKEN:-}" | tr -d '[:space:]')"
 case "$token" in
   *[!A-Za-z0-9_]*)
-    echo "tavrn-website: GITHUB_READ_TOKEN contains characters a GitHub token does not have; the known-issues list stays off" >&2
+    echo "tavrn-website: GITHUB_READ_TOKEN contains characters a GitHub token does not have; the known-issues list and the release lists stay off" >&2
     token=
     ;;
 esac

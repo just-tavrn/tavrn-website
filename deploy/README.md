@@ -12,9 +12,9 @@ Browser ──HTTPS──> Cloudflare (proxy, cache) ──HTTPS──> Nginx Pr
 | File | What |
 |---|---|
 | `Dockerfile` | Multi-stage build: `pnpm build` on `node:24-alpine`, then `caddy:2-alpine` with `dist/` at `/srv`, unprivileged |
-| `Caddyfile` | Headers (CSP, HSTS, …), cache rules, clean URLs, 404 page, `/app`, `/config.json`, `/.well-known/tavrn`, the `/uptime/` and `/gh/issues` proxies, IP-free access log |
+| `Caddyfile` | Headers (CSP, HSTS, …), cache rules, clean URLs, 404 page, `/app`, `/config.json`, `/.well-known/tavrn`, the `/uptime/` proxy and the read-only GitHub proxies (`/gh/issues`, `/gh/releases/web`, `/gh/releases/node`, `/gh/repos/web`), IP-free access log |
 | `entrypoint.sh` | Normalizes the URLs, derives `TAVRN_NODE_WS_URL` and `TAVRN_NODE_HOST`, checks `GITHUB_ORG` and `GITHUB_READ_TOKEN`, HTML-escapes the imprint and contact details, then starts Caddy |
-| `test/gh-proxy.sh` | Checks the `/gh/issues` proxy in Docker against a fake GitHub API (`just gh-proxy-test`) |
+| `test/gh-proxy.sh` | Checks the four GitHub proxy routes under `/gh/` in Docker against a fake GitHub API (`just gh-proxy-test`) |
 | `test/legal-templates.sh` | Checks in Docker that the legal pages show the imprint and contact details of the environment, escaped, and that no other page is a template (`just legal-templates-test`) |
 | `docker-compose.yml` | The stack for Portainer: the `website` service and an optional, commented Uptime Kuma |
 | `.env.example` | Every runtime variable with its default and meaning |
@@ -47,17 +47,23 @@ builds the same image as `ghcr.io/just-tavrn/tavrn-website` on `main` and on `v*
    of that page (`/uptime/api/status-page/<slug>` and `…/heartbeat/<slug>`) without the visitor's IP address, user
    agent or cookies, because Kuma sends no CORS headers outside its development mode. Kuma needs a proxy host in NPM
    only if its own page should be public; with an `https://` URL in `UPTIME_KUMA_URL` the status page links to it.
-5. Optional: set `GITHUB_READ_TOKEN` for the known-issues page (`/issues`). Create a **fine-grained personal access
-   token** (resource owner: the organization; repository access: all repositories; permissions: **Issues:
-   read-only**, Metadata: read-only comes with it) or use a GitHub App installation token with the same read-only
-   permission. Nothing else. The token also makes the issues of **private** repositories visible on the public page,
-   which is intended while the project is in private review; use a token without access to private repositories
-   once that should stop. The container then forwards exactly one request, `GET /gh/issues`, to GitHub's issue
-   search (`org:<GITHUB_ORG> is:issue is:open`, the 100 most recently updated) with that token, drops every header
-   and query parameter of the visitor and every header of GitHub's answer except the JSON body, and lets Cloudflare
-   and browsers cache the answer for five minutes. Without the token the page says that the list is not available
-   yet and links to GitHub. Fine-grained tokens expire: put a reminder in the calendar, an expired token shows as
-   "could not be loaded" on the page.
+5. Set `GITHUB_READ_TOKEN` for the known-issues page (`/issues`) and the download page (`/download`). Create a
+   **fine-grained personal access token** (resource owner: the organization; repository access: all repositories;
+   permissions: **Issues: read-only** and **Contents: read-only**, Metadata: read-only comes with them) or use a
+   GitHub App installation token with the same read-only permissions. Nothing else. The token also makes the issues
+   and releases of **private** repositories visible on the public pages, which is intended while the project is in
+   private review; use a token without access to private repositories once that should stop. The container then
+   forwards exactly four requests to GitHub's API with that token: `GET /gh/issues` (the issue search
+   `org:<GITHUB_ORG> is:issue is:open`, the 100 most recently updated), `GET /gh/releases/web` and
+   `GET /gh/releases/node` (the 20 newest releases of `tavrn-web` and `tavrn-node`) and `GET /gh/repos/web` (whether
+   `tavrn-web` is private). It drops every header and query parameter of the visitor and every header of GitHub's
+   answer except the JSON body, and lets Cloudflare and browsers cache the answers for five minutes. A new release
+   shows on the download page within those five minutes, without a new image. The installers themselves stay plain
+   links to GitHub's asset URLs: the container never proxies or caches a binary. While `tavrn-web` is private the
+   page lists the release without download buttons (visitors would have to sign in to GitHub). Without the token
+   `/gh/*` is 404: the known-issues page says that the list is not available yet, the download page that there is
+   no release yet, and both link to GitHub. Fine-grained tokens expire: put a reminder in the calendar, an expired
+   token shows as "could not be loaded" on the known-issues page and as "no release yet" on the download page.
 
 ## Nginx Proxy Manager
 
@@ -80,7 +86,8 @@ builds the same image as `ghcr.io/just-tavrn/tavrn-website` on `main` and on `v*
   - `/gh/*`: **cache** (eligible for cache, respect the origin's `Cache-Control: public, max-age=300`). Cloudflare
     does not cache extension-less paths by default, and this rule is what keeps GitHub's search limit (30 requests
     a minute per token) out of reach: with it GitHub sees about one request per five minutes and Cloudflare data
-    centre, without it one per page view of `/issues`.
+    centre, without it one per page view of `/issues` and `/download` (the release lists count against the
+    general limit of 5,000 requests an hour, the search against its own of 30 a minute).
   - Everything else: respect the origin's headers (HTML is `no-cache`, other files one hour).
 - Features that set cookies or inject scripts (Web Analytics, Rocket Loader, Email Obfuscation, Zaraz, Bot Fight
   Mode challenges) stay **off**: the privacy policy promises no cookies and no third-party scripts, and the CSP would
@@ -102,4 +109,6 @@ curl -s https://tavrn.org/legal/imprint/ | grep -o '<address.*</address>'   # th
 curl -sI https://tavrn.org/app | grep -i location
 curl -s https://tavrn.org/.well-known/tavrn     # 404 unless TAVRN_WELLKNOWN is on or proxy
 curl -sI https://tavrn.org/gh/issues | grep -i -E '^HTTP|cache-control|cf-cache-status'   # 404 without GITHUB_READ_TOKEN
+curl -s https://tavrn.org/gh/releases/web | head -c 300; echo   # the release list of tavrn-web (404 without the token)
+curl -s https://tavrn.org/gh/repos/web | grep -o '"private": *[a-z]*'
 ```
