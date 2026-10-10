@@ -22,8 +22,9 @@ services:
       # Optional Uptime Kuma: base URL as this container reaches it (e.g. http://uptime-kuma:3001) and status page slug.
       UPTIME_KUMA_URL: ${UPTIME_KUMA_URL:-}
       UPTIME_KUMA_PAGE: ${UPTIME_KUMA_PAGE:-}
-      # Optional: a read-only GitHub token for the known-issues list (/issues); empty = the list says it is not
-      # available yet. GITHUB_ORG is the organization whose open issues it shows.
+      # A read-only GitHub token for the known-issues list (/issues) and the download page's release lists
+      # (/download, read at runtime: a new release shows without a new image); empty = the list says it is not
+      # available yet and the download page that there is no release yet. GITHUB_ORG is the organization of both.
       GITHUB_READ_TOKEN: ${GITHUB_READ_TOKEN:-}
       GITHUB_ORG: ${GITHUB_ORG:-just-tavrn}
       # The imprint and the GDPR controller of the privacy policy, filled into /legal/imprint/ and /legal/privacy/ at

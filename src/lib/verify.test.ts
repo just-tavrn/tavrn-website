@@ -2,7 +2,8 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import downloads from "../data/downloads.json";
+import { APPIMAGE_SHA256, INSTALLER_SHA256, webRelease } from "../../e2e/fixtures/gh-releases";
+import { classifyAssets } from "./releases";
 import {
   base64ToBytes,
   buildIndex,
@@ -65,19 +66,25 @@ describe("normalizeChecksum", () => {
 });
 
 describe("index, lookup and comparison", () => {
-  const index = buildIndex(downloads.web.assets);
+  // A release as GitHub lists it: the digests of the installer and the AppImage are the e2e fixtures'.
+  const index = buildIndex(classifyAssets(webRelease("v0.3.0-rc.1", { prerelease: true, fixtureDigests: true }).assets));
 
-  it("holds the example checksums, which are the e2e fixtures' (src/data/downloads.json)", () => {
-    expect(index.find((f) => f.name === "Tavrn_0.2.0_x64-setup.exe")?.sha256).toBe(hex("sha256", installer));
-    expect(index.find((f) => f.name === "Tavrn-0.2.0.AppImage")?.sha512).toBe(hex("sha512", appImage));
-    expect(needsSha512(index)).toBe(true);
-    expect(needsSha512(index.filter((f) => !f.sha512))).toBe(false);
+  it("holds GitHub's digests, which for the fixtures are the fixtures' SHA-256 (e2e/fixtures/gh-releases.ts)", () => {
+    expect(INSTALLER_SHA256).toBe(hex("sha256", installer));
+    expect(APPIMAGE_SHA256).toBe(hex("sha256", appImage));
+    expect(index.find((f) => f.name === "Tavrn_0.3.0-rc.1_x64-setup.exe")?.sha256).toBe(hex("sha256", installer));
+    expect(index.find((f) => f.name === "Tavrn-0.3.0-rc.1.AppImage")?.sha256).toBe(hex("sha256", appImage));
+    expect(index).toHaveLength(5);
+    // GitHub lists no SHA-512, so the page computes it only for a pasted one.
+    expect(needsSha512(index)).toBe(false);
   });
 
   it("finds a file by SHA-256 first, then by SHA-512", () => {
-    expect(findMatch(index, { sha256: hex("sha256", installer) })).toEqual({ name: "Tavrn_0.2.0_x64-setup.exe", algo: "sha256" });
-    expect(findMatch(index, { sha256: hex("sha256", appImage), sha512: hex("sha512", appImage) })).toEqual({
-      name: "Tavrn-0.2.0.AppImage",
+    expect(findMatch(index, { sha256: hex("sha256", installer) })).toEqual({ name: "Tavrn_0.3.0-rc.1_x64-setup.exe", algo: "sha256" });
+    const with512 = buildIndex([{ name: "Tavrn-0.3.0.AppImage", sha512: b64("sha512", appImage) }]);
+    expect(needsSha512(with512)).toBe(true);
+    expect(findMatch(with512, { sha256: hex("sha256", appImage), sha512: hex("sha512", appImage) })).toEqual({
+      name: "Tavrn-0.3.0.AppImage",
       algo: "sha512",
     });
     expect(findMatch(index, { sha256: "0".repeat(64), sha512: "0".repeat(128) })).toBeNull();

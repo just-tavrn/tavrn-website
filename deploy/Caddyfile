@@ -1,9 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # The tavrn website container: static files from /srv (the Astro build), security and cache headers, runtime
-# configuration for the status and download pages (/config.json), the /app redirect to the web app and, when
-# switched on, the identity-domain delegation document /.well-known/tavrn. TLS ends in front of it (Cloudflare,
-# then Nginx Proxy Manager; deploy/README.md), so this listens on plain HTTP :8080.
+# configuration for the status page (/config.json), the read-only GitHub proxies of the known-issues and download
+# pages (/gh/…), the /app redirect to the web app and, when switched on, the identity-domain delegation document
+# /.well-known/tavrn. TLS ends in front of it (Cloudflare, then Nginx Proxy Manager; deploy/README.md), so this
+# listens on plain HTTP :8080.
 #
 # Runtime environment (defaults after the colon; deploy/.env.example explains each):
 #   TAVRN_APP_URL       where /app redirects to (the web app of the official node)
@@ -13,8 +14,9 @@
 #   TAVRN_WELLKNOWN     off (404), on (a static document from these variables) or proxy (the node's own document)
 #   UPTIME_KUMA_URL     base URL of the Uptime Kuma instance as this container reaches it (empty: no uptime history)
 #   UPTIME_KUMA_PAGE    slug of its public status page
-#   GITHUB_READ_TOKEN   read-only GitHub token for the known-issues list (/gh/issues; empty: that path is 404)
-#   GITHUB_ORG          the GitHub organization whose open issues the list shows
+#   GITHUB_READ_TOKEN   read-only GitHub token for the known-issues list (/gh/issues) and the download page's release
+#                       data (/gh/releases/web, /gh/releases/node, /gh/repos/web); empty: those paths are 404
+#   GITHUB_ORG          the GitHub organization of those issues and of the tavrn-web and tavrn-node repositories
 #   TAVRN_IMPRINT_NAME, TAVRN_IMPRINT_STREET, TAVRN_IMPRINT_CITY, TAVRN_IMPRINT_COUNTRY, TAVRN_CONTACT_EMAIL
 #                       the provider in the imprint and the controller in the privacy policy (filled into the two
 #                       legal pages at request time, see @legal below; entrypoint.sh escapes them and sets
@@ -27,6 +29,32 @@
 	servers {
 		# Plain HTTP/1.1 and h2c behind the proxy (no HTTP/3 advertisement).
 		protocols h1 h2c
+	}
+}
+
+# The proxy to GitHub's REST API behind /gh/issues, /gh/releases/* and /gh/repos/web (below): the rewritten request goes to GitHub
+# with a read-only token added here and nothing from the visitor: every request header of the client is dropped
+# (cookies, user agent, forwarded IP addresses, any Authorization of its own). Of GitHub's answer only the body goes
+# back, as JSON that Cloudflare and browsers may cache for five minutes; GitHub's headers (cookies, rate-limit and
+# request ids, its own security headers) are dropped.
+(github_api) {
+	header Cache-Control "public, max-age=300"
+	header -Via
+	reverse_proxy https://api.github.com {
+		# Everything the client sent goes; then exactly the headers GitHub's API expects.
+		header_up -*
+		header_up Host {upstream_hostport}
+		header_up Authorization "Bearer {$GITHUB_READ_TOKEN:}"
+		header_up Accept application/vnd.github+json
+		header_up X-GitHub-Api-Version 2022-11-28
+		header_up User-Agent tavrn-website
+		# reverse_proxy adds these itself after the client's headers are gone.
+		header_up -X-Forwarded-For
+		header_up -X-Forwarded-Host
+		header_up -X-Forwarded-Proto
+		header_up -Via
+		header_down -*
+		header_down Content-Type "application/json; charset=utf-8"
 	}
 }
 
@@ -94,7 +122,7 @@
 	@app path /app /app/
 	redir @app {$TAVRN_APP_URL:https://tavrn.swsp.eu} 302
 
-	# Runtime configuration for the islands of the status and download pages.
+	# Runtime configuration for the status page and the live dot of the "Status" link.
 	handle /config.json {
 		header Content-Type application/json
 		header Cache-Control no-cache
@@ -130,13 +158,17 @@
 		}
 	}
 
-	# The known-issues page (/issues): the browser never talks to GitHub. This server forwards exactly one read-only
-	# search, GET /gh/issues -> GitHub's issue search for the open issues of the organization's repositories, with a
-	# read-only token added here and nothing from the visitor: every request header of the client is dropped (cookies,
-	# user agent, forwarded IP addresses, any Authorization of its own) and query parameters are ignored (the rewrite
-	# replaces the whole URI). Of GitHub's answer only the body goes back, as JSON that Cloudflare and browsers may
-	# cache for five minutes; GitHub's headers (cookies, rate-limit and request ids, its own security headers) are
-	# dropped. Without GITHUB_READ_TOKEN the path is 404 like any other unknown path, and the page says so.
+	# The known-issues page (/issues) and the download page (/download): the browser never talks to GitHub. This server
+	# forwards exactly four read-only requests to GitHub's REST API, each with a fixed URI and a read-only token added
+	# here (the github_api snippet above):
+	#   GET /gh/issues          -> the issue search for the open issues of the organization's repositories
+	#   GET /gh/releases/web    -> the 20 newest releases of tavrn-web (the desktop installers)
+	#   GET /gh/releases/node   -> the 20 newest releases of tavrn-node (the container image tags)
+	#   GET /gh/repos/web       -> tavrn-web itself (whether it is private: then visitors cannot download the assets)
+	# Only these JSON documents pass through here; the installers themselves are plain links to GitHub's asset URLs,
+	# this server never proxies or caches a binary.
+	# Query parameters of the visitor are ignored (each rewrite replaces the whole URI), other methods and paths are
+	# not forwarded. Without GITHUB_READ_TOKEN these paths are 404 like any other unknown path, and the pages say so.
 	@ghissues {
 		method GET
 		path /gh/issues
@@ -144,24 +176,35 @@
 	}
 	handle @ghissues {
 		rewrite * /search/issues?q=org:{$GITHUB_ORG:just-tavrn}+is:issue+is:open&sort=updated&order=desc&per_page=100
-		header Cache-Control "public, max-age=300"
-		header -Via
-		reverse_proxy https://api.github.com {
-			# Everything the client sent goes; then exactly the headers GitHub's API expects.
-			header_up -*
-			header_up Host {upstream_hostport}
-			header_up Authorization "Bearer {$GITHUB_READ_TOKEN:}"
-			header_up Accept application/vnd.github+json
-			header_up X-GitHub-Api-Version 2022-11-28
-			header_up User-Agent tavrn-website
-			# reverse_proxy adds these itself after the client's headers are gone.
-			header_up -X-Forwarded-For
-			header_up -X-Forwarded-Host
-			header_up -X-Forwarded-Proto
-			header_up -Via
-			header_down -*
-			header_down Content-Type "application/json; charset=utf-8"
-		}
+		import github_api
+	}
+	@ghreleasesweb {
+		method GET
+		path /gh/releases/web
+		expression `"{$GITHUB_READ_TOKEN:}" != ""`
+	}
+	handle @ghreleasesweb {
+		rewrite * /repos/{$GITHUB_ORG:just-tavrn}/tavrn-web/releases?per_page=20
+		import github_api
+	}
+	@ghreleasesnode {
+		method GET
+		path /gh/releases/node
+		expression `"{$GITHUB_READ_TOKEN:}" != ""`
+	}
+	handle @ghreleasesnode {
+		rewrite * /repos/{$GITHUB_ORG:just-tavrn}/tavrn-node/releases?per_page=20
+		import github_api
+	}
+	@ghrepoweb {
+		method GET
+		path /gh/repos/web
+		expression `"{$GITHUB_READ_TOKEN:}" != ""`
+	}
+	handle @ghrepoweb {
+		# The trailing "?" clears the visitor's query (a target without a query of its own would keep it).
+		rewrite * /repos/{$GITHUB_ORG:just-tavrn}/tavrn-web?
+		import github_api
 	}
 
 	# Identity-domain delegation (tavrn-node's HANDBOOK.md, "Identity domain and node host"). "proxy" forwards to the

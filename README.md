@@ -11,7 +11,7 @@ official node, the roadmap and the legal pages of the tavrn project. It is a ful
 | Path | What |
 |---|---|
 | `src/pages/` | The custom pages: landing (`index.astro`), `download`, `status`, `issues` (known issues), `report` (report a problem), `roadmap`, `legal/`, `404` |
-| `src/components/` | Header, footer, `Brand` (the name with `translate="no"`), `Shot` (screenshot frames), the landing's interactive parts (`Federation`, `E2eeToggle`, `Showcase`); `download/` the OS cards of the download page, `status/` the status page's Preact island (`NodeStatus`, `UptimeHistory`, written against the React API through `preact/compat`) and the live dot of the "Status" link (`StatusDot`, vanilla JavaScript); `issues/` the known-issues page's Preact island (`KnownIssues`) |
+| `src/components/` | Header, footer, `Brand` (the name with `translate="no"`), `Shot` (screenshot frames), the landing's interactive parts (`Federation`, `E2eeToggle`, `Showcase`); `download/` the download page's parts (`Releases`, which renders the releases at runtime, the OS cards and the checksum verifier), `status/` the status page's Preact island (`NodeStatus`, `UptimeHistory`, written against the React API through `preact/compat`) and the live dot of the "Status" link (`StatusDot`, vanilla JavaScript); `issues/` the known-issues page's Preact island (`KnownIssues`) |
 | `src/content/docs/` | The wiki (Starlight), served under `/docs/`; its sidebar is `src/docs-sidebar.ts`. `users/` holds the hand-written user guides, `synced/` the pages generated from `sources/` (gitignored, see "The wiki and its sources") |
 | `src/content/pages/` | Markdown pages outside the wiki (the roadmap, generated from `sources/tavrn`) |
 | `sources/` | Git submodules of the repositories the wiki copies its operator and developer pages from |
@@ -23,7 +23,7 @@ official node, the roadmap and the legal pages of the tavrn project. It is a ful
 | `deploy/` | `Dockerfile`, `Caddyfile`, `entrypoint.sh`, `docker-compose.yml`, `.env.example`, [deployment notes](deploy/README.md) |
 | `e2e/` | Playwright: every route, axe scans, keyboard, CSP, privacy |
 | `tests/` | Vitest checks of the built site (JavaScript budget, CSP hashes, no foreign URLs) |
-| `scripts/` | CSP hashes, SPDX and license checks, the publication check, the docs sync (`sync-docs.mjs`, `docs-sources.mjs`, `gen-env-reference.mjs`, `lib/`), the release fetcher (`fetch-releases.mjs`) |
+| `scripts/` | CSP hashes, SPDX and license checks, the publication check, the docs sync (`sync-docs.mjs`, `docs-sources.mjs`, `gen-env-reference.mjs`, `lib/`) |
 
 ## Running it
 
@@ -41,7 +41,7 @@ just check        # everything below, must be green before a commit
 
 `just check` runs `astro check`, the build, Vitest (unit tests, the checks of `dist/` and its link checker), the SPDX and license
 checks, `scripts/publish-check.sh`, `caddy validate` on `deploy/Caddyfile` and the Playwright suite. The two Docker
-tests of the Caddyfile (`just caddy-test`: the `/gh/issues` proxy and the legal pages' runtime values) run
+tests of the Caddyfile (`just caddy-test`: the GitHub proxies under `/gh/` and the legal pages' runtime values) run
 separately. Playwright runs only Chromium and the Android phone emulation with two workers:
 
 ```sh
@@ -110,12 +110,41 @@ scene keys only; Astro makes the WebP variants and widths at build time.
 
 ## Downloads and status
 
-**Download page.** `src/data/downloads.json` is the release data of the page: the installers of the latest
-`tavrn-web` release and the image tag of the latest `tavrn-node` release. `src/lib/releases.ts` classifies the release
-assets by format (NSIS `.exe` and `.msi`, AppImage, `.deb`, `.dmg`, `.app.tar.gz`, `.apk`), architecture (from the
-file name; an AppImage without one is x64, as electron-builder names it) and desktop shell, and attaches the SHA-256
-(from `<file>.sha256`, `SHA256SUMS` or GitHub's asset digest) and the Tauri updater `.sig`. The update feeds
-(`latest.json`, `latest.yml`, `latest-linux.yml`) and anything else are not downloads.
+**Download page.** The page reads the releases at runtime, so a new release of `tavrn-web` or `tavrn-node` shows
+on it within five minutes, without a new build or image. The visitor's browser never contacts GitHub: a small
+script (`src/components/download/Releases.astro`, plain JavaScript) asks this site's own server for
+`/gh/releases/web` and `/gh/releases/node` (the 20 newest releases of each repository) and `/gh/repos/web` (whether
+`tavrn-web` is private), which the container forwards to GitHub's API with its read-only token like `/gh/issues`
+("Known issues and reporting"). Only these JSON lists pass through the server: the installers are plain links to
+GitHub's asset URLs, and the website never proxies or caches a binary. `src/lib/releases.ts` holds the rules, as
+pure functions with unit tests:
+
+- Drafts are ignored, and so is every release without an installer (one with only the web bundle does not count).
+- **Stable** is the newest release that is not a pre-release (by publication date), **Beta** the newest pre-release
+  published after it, or the newest pre-release at all when there is no stable release. GitHub's pre-release flag
+  marks the betas.
+- Both: two tabs above the OS cards, "Stable <version>" (selected) and "Beta <version>" (WAI-ARIA tabs, arrow keys,
+  Home and End). The tab swaps the whole card set, the release line under the title, the verify details and the
+  verifier's known checksums; the beta panel starts with a sentence on what a beta is and its cards carry a "Beta"
+  badge. `/download#beta` opens the beta tab; nothing is remembered.
+- Stable only: no tabs. Beta only: no tabs, the "Beta" badge, the sentence and a line that there is no stable
+  release yet.
+- Neither, or 401/403/404 from the proxy (no token, a token without access): "There is no release yet" and a link
+  to the releases on GitHub, no buttons; server and network errors add "The release list could not be loaded".
+- While `tavrn-web` is a private repository, visitors could not download the assets (GitHub asks them to sign in):
+  the cards list the files without download links, with a sentence why and the link to GitHub. The self-host card
+  says the same about the node image.
+- The self-host card names the image of the newest stable `tavrn-node` release
+  (`ghcr.io/<org>/tavrn-node:<version>`), else of its newest pre-release (marked), else `:edge` with a note.
+
+The classifier sorts the release assets by format (NSIS `.exe` and `.msi`, AppImage, `.deb`, `.dmg`, `.app.tar.gz`,
+`.apk`), architecture (from the file name; an AppImage without one is x64, as electron-builder names it) and
+desktop shell, takes the SHA-256 from GitHub's asset `digest` (`sha256:<hex>`) and attaches the Tauri updater
+`.sig`. The update feeds (`latest.json`, `latest.yml`, `latest-linux.yml`), the web bundle and anything else are not
+downloads. The cards are static shells (`OsCard.astro`, `Verify.astro`) with `<template>`s the script fills, and they
+keep their height while the lists load, so the page does not jump. A small script moves the card of the visitor's
+operating system to the front (`src/lib/os.ts`, from the user agent and client hints only). Without JavaScript the
+page shows a note with the link to the releases on GitHub; the web app and self-host cards stay.
 
 The shells follow tavrn-web's `docs/DESKTOP.md`: **Linux** is the Electron app (electron-builder:
 `Tavrn-<version>.AppImage` and `tavrn_<version>_amd64.deb`, no `.rpm`); **Windows** is the Tauri app
@@ -127,20 +156,12 @@ Every Linux package counts as Electron, every other file without `electron` in i
 
 **Checking a download.** Below the cards, a verifier (`src/components/download/Verifier.astro`, plain JavaScript,
 pure helpers in `src/lib/verify.ts`) checks a chosen or dropped file on the visitor's device: SHA-256 with
-`crypto.subtle`, and SHA-512 when the release lists electron-updater values (`latest*.yml`, read by the fetcher into
-each asset's `sha512`). It compares the result with the checksums embedded at build time and with an optional pasted
-value (hex or base64, whitespace tolerated). Nothing is uploaded, it works offline, files above 1 GB are refused with
-a pointer to the command line check. The example checksums in the committed `downloads.json` are the hashes of the
-test fixtures `e2e/fixtures/example-installer.bin` (SHA-256 of `Tavrn_0.2.0_x64-setup.exe`) and
-`e2e/fixtures/example-appimage.bin` (SHA-512 of `Tavrn-0.2.0.AppImage`), so `e2e/verify.spec.ts` covers the match.
-
-`just fetch-releases` (also the first step of `pnpm build`) refreshes the data from the GitHub API (`GITHUB_TOKEN`
-optional; `FETCH_RELEASES=0` skips it). It never fails the build: without network, without a release or while the
-repositories are private, the committed file stays. The committed file is example data (`"example": true`): the
-page then shows disabled buttons and says that there is no public release yet. A small script moves the card of the
-visitor's operating system to the front (`src/lib/os.ts`, from the user agent and client hints only; without
-JavaScript the order is fixed). A release of `tavrn-web` rebuilds the site through a `repository_dispatch`;
-[docs/RELEASE-DISPATCH.md](docs/RELEASE-DISPATCH.md) has the step for its release workflow.
+`crypto.subtle` (and SHA-512 for a pasted one, such as a value from `latest-linux.yml`). It compares the result with
+the SHA-256 digests of the release the page shows (written into the verifier at runtime, following the selected
+tab) and with an optional pasted value (hex or base64, whitespace tolerated). Nothing is uploaded, files above 1 GB
+are refused with a pointer to the command line check. The end-to-end tests mock the three proxies with releases
+named like `v0.3.0-rc.1` (`e2e/fixtures/gh-releases.ts`) whose installer and AppImage digests are the SHA-256 of
+`e2e/fixtures/example-installer.bin` and `example-appimage.bin`, so `e2e/verify.spec.ts` covers the match.
 
 **Status page and the live dot.** The status page is a Preact island (`client:load`, only on `/status`, under 60 KB
 of JavaScript gzipped with the runtime): it reads `/config.json`, then asks the node for `/healthz`, `/readyz` and
@@ -199,8 +220,8 @@ in.
 | `TAVRN_WELLKNOWN` | `off` | `/.well-known/tavrn`: `off` (404), `on` (static document from these variables), `proxy` (the node's own document) |
 | `UPTIME_KUMA_URL` | empty | Uptime Kuma base URL as the container reaches it (for example `http://uptime-kuma:3001`); the container proxies the status page's two API endpoints as `/uptime/api/status-page/…`, because Kuma sends no CORS headers |
 | `UPTIME_KUMA_PAGE` | empty | Slug of Uptime Kuma's public status page |
-| `GITHUB_READ_TOKEN` | empty | Optional read-only GitHub token (Issues: read-only) for the known-issues page: the container forwards `GET /gh/issues` to GitHub's issue search with it, without anything from the visitor; empty: `/gh/issues` is 404 and the page links to GitHub |
-| `GITHUB_ORG` | `just-tavrn` | The organization whose open issues `/gh/issues` returns (keep it equal to `PUBLIC_GITHUB_ORG`) |
+| `GITHUB_READ_TOKEN` | empty | Read-only GitHub token (Issues and Contents: read-only) for the known-issues page and the download page: the container forwards `GET /gh/issues` (the issue search), `GET /gh/releases/web`, `GET /gh/releases/node` (the release lists) and `GET /gh/repos/web` (whether `tavrn-web` is private) to GitHub's API with it, without anything from the visitor; empty: `/gh/*` is 404, the known-issues page links to GitHub and the download page says there is no release yet |
+| `GITHUB_ORG` | `just-tavrn` | The organization of the issues and of the `tavrn-web` and `tavrn-node` repositories behind `/gh/` (keep it equal to `PUBLIC_GITHUB_ORG`, which also names the node image) |
 | `TAVRN_IMPRINT_NAME` | `Name of the provider` | Provider in the imprint and GDPR controller in the privacy policy (personal data: set it in the stack, never in the repository) |
 | `TAVRN_IMPRINT_STREET` | `Street and number` | Provider's street |
 | `TAVRN_IMPRINT_CITY` | `Postal code and city` | Provider's postal code and city |
@@ -253,12 +274,13 @@ English lives at the root, every other language under `/<code>/` (for German: `/
 - Honest claims only (what the project's README and FAQ say); no comparisons with other products by name.
 - No external requests except the status check: no CDNs, fonts, analytics or embeds. The only connection to another
   origin is the visitor's browser asking the official node (`TAVRN_NODE_URL`) for its health, from the live dot of
-  the "Status" link and the status page; the privacy policy says so. The known-issues list comes from GitHub through
-  this site's own server (`/gh/issues`), not from the browser. No cookies and no browser storage. The tests enforce all of it.
+  the "Status" link and the status page; the privacy policy says so. The known-issues list and the release lists come
+  from GitHub through this site's own server (`/gh/…`), not from the browser; downloads are ordinary links to GitHub. No cookies and no browser storage. The tests enforce all of it.
 - WCAG 2.2 AA: visible focus, 44 px targets on touch, contrast from the tokens only, headings in order, alt texts,
   reduced motion respected, everything works with the keyboard.
 - The landing page stays under 50 KB of JavaScript (gzipped), without an island framework; the status and known-issues
-  pages, the only pages with Preact, stay under 60 KB each. `tests/dist.test.ts` measures them.
+  pages, the only pages with Preact, stay under 60 KB each, the download page (plain JavaScript) under 15 KB.
+  `tests/dist.test.ts` measures them.
 
 ## License and trademark
 

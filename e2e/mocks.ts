@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 // Hermetic stand-ins for what the container and the official node answer at runtime: /config.json (Caddy), the
-// node's /healthz, /readyz and /api/v1/node, Uptime Kuma's status-page API behind the site's /uptime/ proxy, and
-// GitHub's issue search behind the site's /gh/issues proxy.
+// node's /healthz, /readyz and /api/v1/node, Uptime Kuma's status-page API behind the site's /uptime/ proxy,
+// GitHub's issue search behind the site's /gh/issues proxy, and GitHub's release lists and repository behind
+// /gh/releases/web, /gh/releases/node and /gh/repos/web (fixtures in e2e/fixtures/gh-releases.ts).
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Page, Route } from "@playwright/test";
+import { repository, scenarios } from "./fixtures/gh-releases";
 
 const fixtures = join(dirname(fileURLToPath(import.meta.url)), "fixtures");
 export const kumaPage = JSON.parse(readFileSync(join(fixtures, "kuma-status-page.json"), "utf8"));
@@ -29,7 +31,7 @@ export const NODE_INFO = {
   voice: { enabled: true, max_bitrate_kbps: 96, max_participants: 25 },
 };
 
-type Answer = { status?: number; body: unknown } | "abort";
+export type Answer = { status?: number; body?: unknown; delay?: Promise<void> } | "abort";
 
 export interface NodeMock {
   healthz?: Answer;
@@ -117,5 +119,43 @@ export async function mockIssues(page: Page, answer: Answer = { body: ghIssues }
       body: JSON.stringify(answer.body),
     });
   });
+  return hits;
+}
+
+export interface ReleaseMocks {
+  /** /gh/releases/web: today's state on GitHub by default (a beta with installers, an older release without). */
+  web?: Answer;
+  /** /gh/releases/node: a stable release and a newer pre-release by default. */
+  node?: Answer;
+  /** /gh/repos/web: a public repository by default. */
+  repo?: Answer;
+}
+
+/**
+ * Routes the download page's three proxies (deploy/Caddyfile): each answer is a body, a status without body (404:
+ * no token configured), a network failure, or held back until `delay` resolves. Returns the request counts.
+ */
+export async function mockReleases(page: Page, mocks: ReleaseMocks = {}) {
+  const hits: Record<string, number> = { web: 0, node: 0, repo: 0 };
+  const answers: Required<ReleaseMocks> = {
+    web: mocks.web ?? { body: scenarios.betaOnly() },
+    node: mocks.node ?? { body: scenarios.nodeStable() },
+    repo: mocks.repo ?? { body: repository(false) },
+  };
+  const paths = { web: "/gh/releases/web", node: "/gh/releases/node", repo: "/gh/repos/web" } as const;
+  for (const key of ["web", "node", "repo"] as const) {
+    await page.route(`**${paths[key]}`, async (route) => {
+      hits[key]! += 1;
+      const answer = answers[key];
+      if (answer === "abort") return route.abort("failed");
+      await answer.delay;
+      return route.fulfill({
+        status: answer.status ?? 200,
+        contentType: "application/json",
+        headers: { "cache-control": "public, max-age=300" },
+        body: answer.body === undefined ? "" : JSON.stringify(answer.body),
+      });
+    });
+  }
   return hits;
 }

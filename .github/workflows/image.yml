@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # The website's container image (deploy/Dockerfile) through the organization's reusable workflow: built on every
-# push to main and on v* tags and pushed to ghcr.io/just-tavrn/tavrn-website. A release of tavrn-web sends a
-# repository_dispatch of type "release-published", so the download page is rebuilt with the new assets.
+# push to main and on v* tags and pushed to ghcr.io/just-tavrn/tavrn-website. A release of tavrn-web or tavrn-node needs
+# no new image: the download page reads the releases at runtime through the container's /gh/releases/* proxies.
 # The image is generic: no build arguments (their defaults are the official site's), and the imprint and contact
 # details are runtime variables of the container (README.md, "Configuration"). Gated by CI_ENABLED.
 name: Image
@@ -11,8 +11,6 @@ on:
   push:
     branches: [main]
     tags: ["v*"]
-  repository_dispatch:
-    types: [release-published]
   workflow_dispatch:
 
 permissions:

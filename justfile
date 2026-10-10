@@ -20,11 +20,6 @@ dev:
 sync-docs:
     pnpm sync-docs
 
-# The download page's release data: the latest releases of tavrn-web and tavrn-node into src/data/downloads.json
-# (keeps the committed cache when GitHub is unreachable or the repositories are private; GITHUB_TOKEN optional)
-fetch-releases:
-    pnpm fetch-releases
-
 # Update the docs sources to the newest commit of their tracked branch (then review, build and commit sources/)
 # Renders public/og.png from the brand background and the template (scripts/og/template.html).
 og-image:
@@ -57,7 +52,8 @@ e2e *args:
 caddy-validate:
     docker run --rm -v "$PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 
-# The known-issues proxy (/gh/issues) of the Caddyfile against a fake GitHub API, in Docker (port 18089)
+# The GitHub proxies of the Caddyfile (/gh/issues, /gh/releases/web, /gh/releases/node, /gh/repos/web) against a fake
+# GitHub API, in Docker (port 18089)
 gh-proxy-test:
     deploy/test/gh-proxy.sh
 

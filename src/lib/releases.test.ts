@@ -1,17 +1,22 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, it } from "vitest";
-import downloads from "../data/downloads.json";
+import { APPIMAGE_SHA256, INSTALLER_SHA256, nodeRelease, repository, scenarios, webRelease } from "../../e2e/fixtures/gh-releases";
 import {
   archFromName,
   classifyAssets,
+  downloadView,
+  type Fetched,
   formatOf,
-  isChecksumFile,
   formatSize,
   type GithubAsset,
-  nodeReleaseFrom,
+  type GithubRelease,
+  nodeImageFrom,
   parseChecksumList,
-  parseDownloads,
+  parseReleaseList,
   parseUpdaterFeed,
+  selectNodeImage,
+  selectWebReleases,
+  sha256FromDigest,
   webReleaseFrom,
 } from "./releases";
 
@@ -176,11 +181,6 @@ describe("shells", () => {
     expect(appImage.checksum).toBe(HEX_A);
     expect(appImage.arch).toBe("x64");
   });
-
-  it("rejects a shell that does not match the file name", () => {
-    const bad = { ...downloads, web: { ...downloads.web, assets: [{ ...downloads.web.assets[0], shell: "electron" }] } };
-    expect(() => parseDownloads(bad)).toThrow(/shell/);
-  });
 });
 
 describe("release blocks", () => {
@@ -191,38 +191,210 @@ describe("release blocks", () => {
       published_at: "2026-11-01T10:00:00Z",
       assets: [asset("tavrn_0.3.0_amd64.deb")],
     });
-    expect(web).toMatchObject({ version: "0.3.0", tag: "v0.3.0", publishedAt: "2026-11-01T10:00:00Z" });
+    expect(web).toMatchObject({ version: "0.3.0", tag: "v0.3.0", publishedAt: "2026-11-01T10:00:00Z", prerelease: false });
     expect(web.assets).toHaveLength(1);
   });
 
   it("names the node image like the organization's image workflow tags it", () => {
-    expect(nodeReleaseFrom({ tag_name: "v0.3.1" })).toEqual({
-      version: "0.3.1",
-      tag: "v0.3.1",
-      image: "ghcr.io/just-tavrn/tavrn-node:0.3.1",
+    expect(nodeImageFrom({ tag_name: "v0.3.1" })).toEqual({ version: "0.3.1", channel: "stable", image: "ghcr.io/just-tavrn/tavrn-node:0.3.1" });
+    expect(nodeImageFrom({ tag_name: "v0.4.0-rc.1", prerelease: true }, "example-org")).toEqual({
+      version: "0.4.0-rc.1",
+      channel: "prerelease",
+      image: "ghcr.io/example-org/tavrn-node:0.4.0-rc.1",
     });
+    expect(nodeImageFrom(null)).toEqual({ version: null, channel: "edge", image: "ghcr.io/just-tavrn/tavrn-node:edge" });
   });
 });
 
-describe("downloads.json", () => {
-  it("has the expected shape", () => {
-    expect(() => parseDownloads(downloads)).not.toThrow();
-  });
-
-  it("is marked as example data until the first public release", () => {
-    // The committed cache is example data; scripts/fetch-releases.mjs replaces it with a real release.
-    if (downloads.example) {
-      for (const a of downloads.web.assets) expect(a.url).toMatch(/^https:\/\/github\.com\/just-tavrn\/tavrn-web\/releases\/download\/v0\.2\.0\//);
+describe("sha256FromDigest", () => {
+  it("reads GitHub's asset digest", () => {
+    expect(sha256FromDigest(`sha256:${HEX_A.toUpperCase()}`)).toBe(HEX_A);
+    for (const bad of [null, undefined, "", HEX_A, `sha512:${HEX_A}`, `sha256:${HEX_A.slice(1)}`, `sha256:${HEX_A}0`]) {
+      expect(sha256FromDigest(bad), String(bad)).toBeUndefined();
     }
   });
 
-  it("rejects broken data with the path of the problem", () => {
-    expect(() => parseDownloads({ ...downloads, web: { ...downloads.web, assets: [{ name: "x.deb" }] } })).toThrow(/web\.assets\[0\]\.url/);
-    expect(() => parseDownloads({ ...downloads, node: { ...downloads.node, image: "docker.io/evil:1" } })).toThrow(/node\.image/);
-    expect(() => parseDownloads({ ...downloads, example: "yes" })).toThrow(/example/);
-    expect(() =>
-      parseDownloads({ ...downloads, web: { ...downloads.web, assets: [{ ...downloads.web.assets[0], kind: "msi" }] } }),
-    ).toThrow(/does not match/);
+  it("is the checksum of every installer of a real release", () => {
+    const entries = classifyAssets(webRelease("v0.3.0-rc.1", { fixtureDigests: true }).assets);
+    const by = Object.fromEntries(entries.map((e) => [e.name, e]));
+    expect(by["Tavrn_0.3.0-rc.1_x64-setup.exe"]!.checksum).toBe(INSTALLER_SHA256);
+    expect(by["Tavrn-0.3.0-rc.1.AppImage"]!.checksum).toBe(APPIMAGE_SHA256);
+    for (const e of entries) expect(e.checksum, e.name).toMatch(/^[a-f0-9]{64}$/);
+  });
+});
+
+describe("parseReleaseList", () => {
+  it("keeps the fields the page reads", () => {
+    const [release] = parseReleaseList([webRelease("v0.3.0-rc.1", { prerelease: true })])!;
+    expect(release).toMatchObject({ tag_name: "v0.3.0-rc.1", prerelease: true, draft: false, published_at: "2026-10-10T12:00:00Z" });
+    expect(release!.assets.map((a) => a.name)).toContain("Tavrn_0.3.0-rc.1_x64-setup.exe");
+    expect(Object.keys(release!.assets[0]!).sort()).toEqual(["browser_download_url", "digest", "name", "size"]);
+  });
+
+  it("is null for anything that is not a list", () => {
+    for (const bad of [null, {}, "[]", { message: "Not Found" }, 3]) expect(parseReleaseList(bad), JSON.stringify(bad)).toBeNull();
+    expect(parseReleaseList([])).toEqual([]);
+  });
+
+  it("drops entries and assets with odd fields or links outside github.com", () => {
+    const good = webRelease("v0.3.0");
+    const list = parseReleaseList([
+      { ...good, tag_name: 3 },
+      { ...good, tag_name: "v1 <script>" },
+      { ...good, html_url: "javascript:alert(1)" },
+      { ...good, html_url: "https://evil.example/x" },
+      null,
+      {
+        ...good,
+        assets: [
+          { ...good.assets[0], browser_download_url: "https://evil.example/Tavrn-0.3.0.AppImage" },
+          { ...good.assets[0], browser_download_url: 'https://github.com/x" onclick="y' },
+          { ...good.assets[0], name: "" },
+          { ...good.assets[2], size: "big" },
+          "junk",
+        ],
+      },
+    ])!;
+    expect(list).toHaveLength(1);
+    expect(list[0]!.assets).toEqual([{ name: good.assets[2]!.name, browser_download_url: good.assets[2]!.browser_download_url, size: 0, digest: good.assets[2]!.digest }]);
+  });
+
+  it("treats a missing or unreadable publication date as unknown", () => {
+    const [a, b] = parseReleaseList([{ ...webRelease("v1.0.0"), published_at: "soon" }, { ...webRelease("v1.0.1"), published_at: undefined }])!;
+    expect(a!.published_at).toBeNull();
+    expect(b!.published_at).toBeNull();
+  });
+});
+
+const parsed = (list: unknown) => parseReleaseList(list) as GithubRelease[];
+
+describe("selectWebReleases", () => {
+  it("stable only: the newest stable release, no beta", () => {
+    const { stable, beta } = selectWebReleases(parsed(scenarios.stableOnly()));
+    expect(stable?.tag).toBe("v0.3.0");
+    expect(beta).toBeNull();
+  });
+
+  it("pre-release only: the beta, no stable", () => {
+    const { stable, beta } = selectWebReleases(parsed(scenarios.betaOnly()));
+    expect(stable).toBeNull();
+    expect(beta).toMatchObject({ tag: "v0.3.0-rc.1", version: "0.3.0-rc.1", prerelease: true });
+  });
+
+  it("stable and a newer pre-release: both, the newest of each", () => {
+    const { stable, beta } = selectWebReleases(parsed(scenarios.both()));
+    expect(stable?.tag).toBe("v0.3.0");
+    expect(beta?.tag).toBe("v0.4.0-beta.1");
+  });
+
+  it("stable and only older pre-releases: no beta", () => {
+    const { stable, beta } = selectWebReleases(parsed(scenarios.stableNewerThanBeta()));
+    expect(stable?.tag).toBe("v0.3.0");
+    expect(beta).toBeNull();
+  });
+
+  it("orders by publication date, not by the order of the answer or the version", () => {
+    const list = parsed([
+      webRelease("v0.2.5", { published: "2026-09-01T00:00:00Z" }),
+      webRelease("v0.3.0-rc.2", { prerelease: true, published: "2026-10-02T00:00:00Z" }),
+      webRelease("v0.2.6", { published: "2026-09-20T00:00:00Z" }),
+      webRelease("v0.3.0-rc.1", { prerelease: true, published: "2026-09-15T00:00:00Z" }),
+    ]);
+    const { stable, beta } = selectWebReleases(list);
+    expect(stable?.tag).toBe("v0.2.6");
+    expect(beta?.tag).toBe("v0.3.0-rc.2");
+  });
+
+  it("ignores releases without installers, also when they are newer", () => {
+    const list = parsed([
+      webRelease("v0.5.0", { published: "2026-12-01T00:00:00Z", webOnly: true }),
+      webRelease("v0.5.0-rc.1", { prerelease: true, published: "2026-11-25T00:00:00Z", webOnly: true }),
+      webRelease("v0.4.0", { published: "2026-11-01T00:00:00Z" }),
+    ]);
+    expect(selectWebReleases(list)).toMatchObject({ stable: { tag: "v0.4.0" }, beta: null });
+    expect(selectWebReleases(parsed([webRelease("v0.2.0", { webOnly: true })]))).toEqual({ stable: null, beta: null });
+  });
+
+  it("ignores drafts", () => {
+    const list = parsed([
+      webRelease("v0.5.0", { draft: true }),
+      webRelease("v0.5.0-rc.1", { draft: true, prerelease: true }),
+      webRelease("v0.4.0", { published: "2026-11-01T00:00:00Z" }),
+    ]);
+    expect(selectWebReleases(list)).toMatchObject({ stable: { tag: "v0.4.0" }, beta: null });
+    expect(selectWebReleases(parsed(scenarios.none()))).toEqual({ stable: null, beta: null });
+  });
+
+  it("classifies the installers of the chosen releases", () => {
+    const { beta } = selectWebReleases(parsed(scenarios.betaOnly()));
+    expect(beta!.assets.map((a) => a.name)).toEqual([
+      "Tavrn_0.3.0-rc.1_x64-setup.exe",
+      "Tavrn_0.3.0-rc.1_x64_en-US.msi",
+      "tavrn-electron_0.3.0-rc.1_x64-setup.exe",
+      "Tavrn-0.3.0-rc.1.AppImage",
+      "tavrn_0.3.0-rc.1_amd64.deb",
+    ]);
+    expect(beta!.assets.find((a) => a.kind === "msi")!.signature).toMatch(/\.msi\.sig$/);
+  });
+});
+
+describe("selectNodeImage", () => {
+  it("prefers the newest stable tag, also over a newer pre-release", () => {
+    expect(selectNodeImage(parsed(scenarios.nodeStable()))).toEqual({ image: "ghcr.io/just-tavrn/tavrn-node:0.2.0", channel: "stable", version: "0.2.0" });
+  });
+
+  it("falls back to the newest pre-release, marked as such", () => {
+    const list = parsed([
+      nodeRelease("v0.3.0-rc.1", { prerelease: true, published: "2026-10-01T00:00:00Z" }),
+      nodeRelease("v0.3.0-rc.2", { prerelease: true, published: "2026-10-08T00:00:00Z" }),
+      nodeRelease("v0.4.0", { draft: true }),
+    ]);
+    expect(selectNodeImage(list, "example-org")).toEqual({ image: "ghcr.io/example-org/tavrn-node:0.3.0-rc.2", channel: "prerelease", version: "0.3.0-rc.2" });
+  });
+
+  it("falls back to edge without any published release", () => {
+    expect(selectNodeImage([])).toEqual({ image: "ghcr.io/just-tavrn/tavrn-node:edge", channel: "edge", version: null });
+    expect(selectNodeImage(parsed([nodeRelease("v1.0.0", { draft: true })])).channel).toBe("edge");
+  });
+});
+
+describe("downloadView", () => {
+  const ok = (body: unknown): Fetched => ({ ok: true, body });
+  const status = (code: number): Fetched => ({ ok: false, status: code });
+  const answers = (web: Fetched, node: Fetched = ok(scenarios.nodeStable()), repo: Fetched = ok(repository(false))) => ({ web, node, repo });
+
+  it("names the mode of every scenario", () => {
+    expect(downloadView(answers(ok(scenarios.both()))).mode).toBe("both");
+    expect(downloadView(answers(ok(scenarios.stableOnly()))).mode).toBe("stable");
+    expect(downloadView(answers(ok(scenarios.stableNewerThanBeta()))).mode).toBe("stable");
+    expect(downloadView(answers(ok(scenarios.betaOnly()))).mode).toBe("beta");
+    expect(downloadView(answers(ok(scenarios.none()))).mode).toBe("none");
+    expect(downloadView(answers(ok([]))).mode).toBe("none");
+  });
+
+  it("401, 403 and 404 from the proxy are the quiet \"no release yet\"; server errors and no answer say so", () => {
+    for (const code of [401, 403, 404]) expect(downloadView(answers(status(code)))).toMatchObject({ mode: "none", loadError: false });
+    for (const code of [500, 502, 503, 0]) expect(downloadView(answers(status(code)))).toMatchObject({ mode: "none", loadError: true });
+    expect(downloadView(answers(ok({ message: "Bad credentials" })))).toMatchObject({ mode: "none", loadError: true });
+    expect(downloadView(answers(ok(scenarios.none())))).toMatchObject({ mode: "none", loadError: false });
+  });
+
+  it("reads whether tavrn-web is private; unknown counts as public", () => {
+    expect(downloadView(answers(ok(scenarios.betaOnly()), undefined, ok(repository(true)))).private).toBe(true);
+    expect(downloadView(answers(ok(scenarios.betaOnly()), undefined, ok(repository(false)))).private).toBe(false);
+    expect(downloadView(answers(ok(scenarios.betaOnly()), undefined, status(404))).private).toBe(false);
+    expect(downloadView(answers(ok(scenarios.betaOnly()), undefined, ok({ private: "yes" }))).private).toBe(false);
+  });
+
+  it("picks the node image independently of the web releases", () => {
+    expect(downloadView(answers(status(404), ok(scenarios.nodeStable()))).node.image).toBe("ghcr.io/just-tavrn/tavrn-node:0.2.0");
+    expect(downloadView(answers(ok(scenarios.both()), ok(scenarios.nodeBetaOnly()), ok(repository(false))), "example-org").node).toEqual({
+      image: "ghcr.io/example-org/tavrn-node:0.3.0-rc.1",
+      channel: "prerelease",
+      version: "0.3.0-rc.1",
+    });
+    expect(downloadView(answers(ok(scenarios.both()), status(503))).node.channel).toBe("edge");
+    expect(downloadView(answers(ok(scenarios.both()), ok("nonsense"))).node.channel).toBe("edge");
   });
 });
 
@@ -259,14 +431,11 @@ releaseDate: '2026-11-01T10:00:00.000Z'
     expect(sums.size).toBe(2);
   });
 
-  it("attaches them to the assets and validates them", () => {
+  it("attaches them to the assets", () => {
     const entries = classifyAssets([asset("Tavrn-0.3.0.AppImage"), asset("tavrn_0.3.0_amd64.deb"), asset("latest-linux.yml")], {
       "latest-linux.yml": feed,
     });
     expect(entries.map((e) => e.sha512)).toEqual([SHA, OTHER]);
-    expect(isChecksumFile("latest-linux.yml")).toBe(true);
-    expect(isChecksumFile("latest.yml")).toBe(true);
-    expect(() => parseDownloads({ ...downloads, web: { ...downloads.web, assets: [{ ...downloads.web.assets[3], sha512: "abc" }] } })).toThrow(/sha512/);
   });
 
   it("ignores values that are not SHA-512 base64", () => {

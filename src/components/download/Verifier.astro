@@ -2,22 +2,16 @@
 // SPDX-License-Identifier: Apache-2.0
 // The checksum verifier of the download page, rendered once below the cards (each card's "Verify the download"
 // links here): a labelled file input with a drop zone and an optional "expected checksum" field. The script reads the
-// file on the visitor's device, computes SHA-256 (and SHA-512 when the release lists electron-updater values) with
-// crypto.subtle and compares it with the checksums embedded from downloads.json and with a pasted value. Nothing is
-// uploaded; it works offline. Plain JavaScript (src/lib/verify.ts holds the pure part).
+// file on the visitor's device, computes SHA-256 (and SHA-512 for a pasted SHA-512, or when the known checksums list
+// one) with crypto.subtle and compares it with the known checksums of the selected release and with a pasted value.
+// The known checksums arrive at runtime: Releases.astro writes them into data-known (GitHub's SHA-256 digests of the
+// shown release) and fires "known-change". Nothing is uploaded. Plain JavaScript (src/lib/verify.ts holds the pure
+// part).
 import Lock from "@lucide/astro/icons/lock";
 import ShieldCheck from "@lucide/astro/icons/shield-check";
 import { t } from "../../i18n";
-import type { DownloadAsset } from "../../lib/releases";
-import { buildIndex } from "../../lib/verify";
 
-interface Props {
-  assets: DownloadAsset[];
-}
-
-const { assets } = Astro.props;
 const locale = Astro.currentLocale;
-const known = buildIndex(assets);
 const keys = [
   "computing", "file", "match_asset", "match_pasted", "mismatch_pasted", "invalid_pasted", "no_match", "no_match_listed",
   "computed", "too_large", "read_error", "unsupported", "copy", "copied",
@@ -26,7 +20,7 @@ const strings = Object.fromEntries(keys.map((k) => [k, t(locale, `download.verif
 ---
 
 <section id="verify" class="container-site pb-12" aria-labelledby="verify-title">
-  <div class="verifier" data-verifier data-known={JSON.stringify(known)} data-strings={JSON.stringify(strings)} data-locale={locale ?? "en"}>
+  <div class="verifier" data-verifier data-known="[]" data-strings={JSON.stringify(strings)} data-locale={locale ?? "en"}>
     <div class="flex items-center gap-3">
       <span class="v-icon" aria-hidden="true"><ShieldCheck class="h-5 w-5" /></span>
       <h2 id="verify-title" class="text-xl font-semibold text-fg-0">{t(locale, "download.verifier.title")}</h2>
@@ -237,7 +231,14 @@ const strings = Object.fromEntries(keys.map((k) => [k, t(locale, `download.verif
 
   const root = document.querySelector<HTMLElement>("[data-verifier]");
   if (root) {
-    const known = JSON.parse(root.dataset.known ?? "[]") as KnownFile[];
+    // The known checksums of the release the page shows; Releases.astro replaces them when it loads or switches.
+    const known = () => {
+      try {
+        return JSON.parse(root.dataset.known ?? "[]") as KnownFile[];
+      } catch {
+        return [];
+      }
+    };
     const strings = JSON.parse(root.dataset.strings ?? "{}") as Record<string, string>;
     const locale = root.dataset.locale ?? "en";
     const input = root.querySelector<HTMLInputElement>("[data-file]")!;
@@ -302,7 +303,7 @@ const strings = Object.fromEntries(keys.map((k) => [k, t(locale, `download.verif
           if (hex) nodes.push(hashRow(s("computed", { algo: algoLabel(pasted.algo) }), hex));
         }
       }
-      const match = findMatch(known, digests);
+      const match = findMatch(known(), digests);
       if (match) nodes.push(line("ok", s("match_asset", { name: match.name, algo: algoLabel(match.algo) })));
       else if (pasted && !pastedMatch) nodes.push(line("info", s("no_match_listed")));
       else if (!pastedMatch) nodes.push(line("bad", s("no_match")), hashRow("", digests.sha256));
@@ -327,7 +328,7 @@ const strings = Object.fromEntries(keys.map((k) => [k, t(locale, `download.verif
         const data = await file.arrayBuffer();
         const pasted = normalizeChecksum(expected.value);
         const digests: Digests = { sha256: await digest("sha256", data) };
-        if (needsSha512(known) || pasted?.algo === "sha512") digests.sha512 = await digest("sha512", data);
+        if (needsSha512(known()) || pasted?.algo === "sha512") digests.sha512 = await digest("sha512", data);
         current = { file, digests };
         render();
       } catch {
@@ -339,6 +340,9 @@ const strings = Object.fromEntries(keys.map((k) => [k, t(locale, `download.verif
       }
     }
 
+    root.addEventListener("known-change", () => {
+      if (current && !busy) render();
+    });
     input.addEventListener("change", () => {
       const file = input.files?.[0];
       if (file) void check(file);

@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: Apache-2.0
 #
-# Checks the known-issues proxy of deploy/Caddyfile (GET /gh/issues) in Docker against a fake GitHub API
-# (deploy/test/fake-github.py): the exact Caddyfile and entrypoint.sh, with only the upstream address replaced.
-# Asserts the upstream request (fixed search query, client query ignored, token and API headers added, no client
-# header passed on) and the response (body only, application/json, five-minute cache, no cookies or GitHub
-# headers), the 404 without a token, and that other methods are not forwarded.
+# Checks the GitHub proxies of deploy/Caddyfile (GET /gh/issues, /gh/releases/web, /gh/releases/node, /gh/repos/web)
+# in Docker against a fake GitHub API (deploy/test/fake-github.py): the exact Caddyfile and entrypoint.sh, with only
+# the upstream address replaced. Asserts for each route the upstream request (fixed URI, client query ignored, token and
+# API headers added, no client header passed on) and the response (body only, application/json, five-minute cache,
+# no cookies or GitHub headers), the 404 without a token or with an unusable one, that other methods and other paths
+# under /gh/ are not forwarded.
 #   just gh-proxy-test        (needs Docker, the images caddy:2-alpine and python:3.12-slim, port 18089 free)
 set -euo pipefail
 
@@ -67,13 +68,16 @@ visitor=(
   -H 'Accept-Language: de'
   -H 'X-Custom: leak'
 )
-curl -s -D "$work/headers" -o "$work/body" "${visitor[@]}" "http://127.0.0.1:$port/gh/issues?q=repo:evil/evil&per_page=1"
-
-python3 - "$work/body" <<'PY' && r=0 || r=$?
+# One route: what reached the fake GitHub (the fixed URI, the token and the API headers, nothing of the visitor) and
+# what came back (body only, JSON, five-minute cache, no cookies or GitHub headers).
+route() { # path the visitor asks for (with a query of its own), expected upstream path with query
+  local ask="$1" expected="$2" name="${1%%\?*}"
+  curl -s -D "$work/headers" -o "$work/body" "${visitor[@]}" "http://127.0.0.1:$port$ask"
+  python3 - "$work/body" "$expected" <<'PY2' && r=0 || r=$?
 import json, sys
 seen = json.load(open(sys.argv[1]))["seen"]
 h = {k.lower(): v for k, v in seen["headers"].items()}
-expected_path = "/search/issues?q=org:example-org+is:issue+is:open&sort=updated&order=desc&per_page=100"
+expected_path = sys.argv[2]
 problems = []
 if seen["method"] != "GET": problems.append(f"method {seen['method']}")
 if seen["path"] != expected_path: problems.append(f"path {seen['path']}")
@@ -88,30 +92,42 @@ if "203.0.113.7" in json.dumps(seen) or "visitor" in json.dumps(seen).lower(): p
 print("     upstream:", seen["path"], sorted(h))
 for p in problems: print("     ", p)
 sys.exit(1 if problems else 0)
-PY
-check "upstream gets the fixed query, the token and the API headers, nothing from the visitor" "$r"
+PY2
+  check "$name: upstream gets the fixed URI, the token and the API headers, nothing from the visitor" "$r"
 
-tr -d '\r' <"$work/headers" >"$work/h"
-grep -qi '^HTTP/1.1 200' "$work/h"; check "answers 200" $?
-grep -qi '^content-type: application/json; charset=utf-8$' "$work/h"; check "content-type application/json" $?
-[ "$(grep -ci '^cache-control:' "$work/h")" = 1 ] && grep -qi '^cache-control: public, max-age=300$' "$work/h"
-check "exactly one Cache-Control: public, max-age=300" $?
-! grep -qiE '^(set-cookie|x-ratelimit|x-github|x-oauth|etag|link|via):' "$work/h"; check "no Set-Cookie, Via or GitHub headers" $?
-curl -s --compressed -o "$work/gz" -H 'Accept-Encoding: gzip' "http://127.0.0.1:$port/gh/issues" && python3 -c 'import json,sys; json.load(open(sys.argv[1]))' "$work/gz"
-check "a gzip-compressed answer decodes to the same JSON" $?
-[ "$(grep -ci '^content-security-policy:' "$work/h")" = 1 ] && ! grep -qi "^content-security-policy: default-src 'none'" "$work/h"
-check "only our own Content-Security-Policy" $?
-echo "     response headers: $(grep -oiE '^[a-z-]+:' "$work/h" | tr '\n' ' ')"
+  tr -d '\r' <"$work/headers" >"$work/h"
+  grep -qi '^HTTP/1.1 200' "$work/h"; check "$name: answers 200" $?
+  grep -qi '^content-type: application/json; charset=utf-8$' "$work/h"; check "$name: content-type application/json" $?
+  [ "$(grep -ci '^cache-control:' "$work/h")" = 1 ] && grep -qi '^cache-control: public, max-age=300$' "$work/h"
+  check "$name: exactly one Cache-Control: public, max-age=300" $?
+  ! grep -qiE '^(set-cookie|x-ratelimit|x-github|x-oauth|etag|link|via):' "$work/h"; check "$name: no Set-Cookie, Via or GitHub headers" $?
+  curl -s --compressed -o "$work/gz" -H 'Accept-Encoding: gzip' "http://127.0.0.1:$port$name" && python3 -c 'import json,sys; json.load(open(sys.argv[1]))' "$work/gz"
+  check "$name: a gzip-compressed answer decodes to the same JSON" $?
+  [ "$(grep -ci '^content-security-policy:' "$work/h")" = 1 ] && ! grep -qi "^content-security-policy: default-src 'none'" "$work/h"
+  check "$name: only our own Content-Security-Policy" $?
+  echo "     response headers: $(grep -oiE '^[a-z-]+:' "$work/h" | tr '\n' ' ')"
 
-code="$(curl -s -o /dev/null -w '%{http_code}' -X POST "http://127.0.0.1:$port/gh/issues")"
-[ "$code" != 200 ] && [ "$code" != 502 ]; check "POST is not forwarded ($code)" $?
-code="$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$port/gh/issues/1")"
-[ "$code" = 404 ]; check "other paths under /gh/ are 404 ($code)" $?
-code="$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$((port + 1))/gh/issues")"
-[ "$code" = 404 ]; check "without GITHUB_READ_TOKEN /gh/issues is 404 ($code)" $?
+  code="$(curl -s -o /dev/null -w '%{http_code}' -X POST "http://127.0.0.1:$port$name")"
+  [ "$code" != 200 ] && [ "$code" != 502 ]; check "$name: POST is not forwarded ($code)" $?
+  code="$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$port$name/1")"
+  [ "$code" = 404 ]; check "$name: paths below it are 404 ($code)" $?
+  code="$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$((port + 1))$name")"
+  [ "$code" = 404 ]; check "$name: without GITHUB_READ_TOKEN it is 404 ($code)" $?
+  code="$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$((port + 2))$name")"
+  [ "$code" = 404 ]; check "$name: with a token with foreign characters it is 404 ($code)" $?
+}
 
-code="$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$((port + 2))/gh/issues")"
-[ "$code" = 404 ]; check "a token with foreign characters is refused: /gh/issues is 404 ($code)" $?
+route "/gh/issues?q=repo:evil/evil&per_page=1" "/search/issues?q=org:example-org+is:issue+is:open&sort=updated&order=desc&per_page=100"
+route "/gh/releases/web?per_page=100&repo=evil" "/repos/example-org/tavrn-web/releases?per_page=20"
+route "/gh/releases/node?page=2" "/repos/example-org/tavrn-node/releases?per_page=20"
+route "/gh/repos/web?visibility=all" "/repos/example-org/tavrn-web"
+
+for path in /gh/releases /gh/releases/ /gh/releases/other /gh/releases/tavrn-web /gh/repos /gh/repos/node /gh/repos/tavrn-web \
+  /gh/repos/example-org/tavrn-web/releases /gh/; do
+  code="$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$port$path")"
+  [ "$code" = 404 ]; check "other paths under /gh/ are 404: $path ($code)" $?
+done
+
 docker logs "$id-bad" 2>&1 | grep -q 'GITHUB_READ_TOKEN contains characters' && docker logs "$id-bad" 2>&1 | grep -q 'is not a GitHub organization name'
 check "entrypoint.sh warns about both values" $?
 
