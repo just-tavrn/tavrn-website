@@ -1,0 +1,66 @@
+---
+title: Moderation for room owners
+description: Roles and permissions, category and channel overrides, kicks, bans and timeouts, reports, auto-moderation and the audit log.
+sidebar:
+  order: 10
+---
+
+import Screenshot from "../../../components/docs/Screenshot.astro";
+
+As the owner of a room you decide who may do what. Everything below is in **Room settings**, which you open from
+the room's name at the top of the sidebar.
+
+## Roles and permissions
+
+Under **Roles** you create roles such as "Moderator", give them a colour, choose whether they appear separately in
+the member list and whether people may mention them, and switch their permissions on or off. Roles higher in the
+list weigh more. You can only grant permissions you have yourself, and `@everyone`, the role every member has, can
+never get management permissions.
+
+<Screenshot scene="roles-desktop" />
+
+## Category and channel permissions
+
+Permissions come in layers. Roles give the base. A **category** can change a role's permissions for all its
+channels, and a **channel** can change them again for itself; the channel wins. A switch left at "–" takes the
+value from the layer below, which is shown in grey. **Reset to category** removes a channel's own changes. Members
+only see the channels they may view.
+
+## Keeping order
+
+Open a member's menu to remove (kick), ban or time out someone, mute them in voice, or move them to another voice
+channel. Timeouts last from minutes up to 28 days. You cannot act against someone whose highest role is not below
+yours. **Bans** can name a single address or a whole domain, with a reason.
+
+**Slowmode** limits how often each member may write in a channel. **Bulk delete** removes many messages at once
+after showing a preview.
+
+## Reports
+
+Members report messages, people or a whole room from the menus. Members with the permission to moderate members
+find the reports under **Reports**, where they assign, resolve or dismiss them and act directly. The reported
+person is never told who reported them, but reports are not anonymous to moderators.
+
+Nobody but the members can read an encrypted message. The person who reports it may choose to share its text, and
+moderators see it marked as "released by the reporter – not verified".
+
+<Screenshot scene="moderation-desktop" />
+
+## Auto-moderation
+
+**Auto-moderation** blocks or removes messages with words or links you list, with exceptions for roles and
+channels. It only works in channels without encryption, because the node cannot read encrypted ones. The node's
+own protection against message floods applies everywhere.
+
+<Screenshot scene="room-automod-desktop" />
+
+## The audit log
+
+The **Audit log** records what moderators and admins did, with their reasons. It helps a team see what happened
+and why.
+
+## Handing over a room
+
+**Room settings → Overview → Transfer ownership** gives the room to another member of the same node. The overview
+also sets how long messages are kept, and members who reset their security key can ask you to restore their
+encrypted history under **History requests**.

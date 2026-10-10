@@ -1,0 +1,198 @@
+---
+// SPDX-License-Identifier: Apache-2.0
+// Site header: logo and wordmark, the main navigation, and on narrow screens a menu button (aria-expanded) that
+// opens the same links as a panel. Without JavaScript the footer carries every link, so nothing is unreachable. The
+// "Status" link carries the live dot of the official node (StatusDot).
+import { Image } from "astro:assets";
+import { PUBLIC_GITHUB_ORG } from "astro:env/client";
+import ExternalLink from "@lucide/astro/icons/external-link";
+import Menu from "@lucide/astro/icons/menu";
+import X from "@lucide/astro/icons/x";
+import icon from "../assets/brand/icon-192.png";
+import { localePath, t } from "../i18n";
+import Brand from "./Brand.astro";
+import StatusDot from "./status/StatusDot.astro";
+
+const locale = Astro.currentLocale;
+const path = Astro.url.pathname.replace(/\/$/, "") || "/";
+const github = `https://github.com/${PUBLIC_GITHUB_ORG}`;
+const links = [
+  { href: localePath(locale, "/") + "#features", label: t(locale, "nav.features"), match: "" },
+  { href: localePath(locale, "/download"), label: t(locale, "nav.download"), match: "/download" },
+  { href: localePath(locale, "/docs/"), label: t(locale, "nav.docs"), match: "/docs" },
+  { href: localePath(locale, "/status"), label: t(locale, "nav.status"), match: "/status", status: true },
+  { href: localePath(locale, "/report"), label: t(locale, "nav.report"), match: "/report" },
+];
+const current = (match: string) => (match && (path === match || path.startsWith(match + "/")) ? "page" : undefined);
+---
+
+<header class="site-header sticky top-0 z-40 border-b border-line bg-bg-0/95 backdrop-blur supports-[backdrop-filter]:bg-bg-0/80">
+  <div class="container-site flex h-16 items-center justify-between gap-4">
+    <a href={localePath(locale, "/")} class="flex min-h-11 items-center gap-2.5 rounded-md text-fg-0 no-underline">
+      <Image src={icon} alt="" width={32} height={32} densities={[1, 2]} loading="eager" class="h-8 w-8" />
+      <Brand class="text-xl font-bold tracking-tight" />
+      <span class="sr-only">{t(locale, "nav.home")}</span>
+    </a>
+
+    <nav aria-label={t(locale, "nav.label")} class="flex items-center" data-site-nav>
+      <ul class="nav-list items-center gap-1">
+        {
+          links.map((l) => (
+            <li>
+              <a href={l.href} class="nav-link" aria-current={current(l.match)} data-status-link={l.status ? "" : undefined}>
+                {l.status ? <StatusDot>{l.label}</StatusDot> : l.label}
+              </a>
+            </li>
+          ))
+        }
+        <li>
+          <a href={github} class="nav-link" rel="noopener">
+            {t(locale, "nav.github")}
+            <ExternalLink class="h-3.5 w-3.5" aria-hidden="true" />
+            <span class="sr-only">{t(locale, "common.external")}</span>
+          </a>
+        </li>
+      </ul>
+
+      <button
+        type="button"
+        class="menu-button"
+        aria-expanded="false"
+        aria-controls="mobile-menu"
+        data-menu-button
+      >
+        <Menu class="icon-open h-5 w-5" aria-hidden="true" />
+        <X class="icon-close h-5 w-5" aria-hidden="true" />
+        <span>{t(locale, "nav.menu")}</span>
+      </button>
+      <div id="mobile-menu" class="mobile-menu" hidden data-menu-panel>
+        <ul class="container-site flex flex-col py-2">
+          {
+            links.map((l) => (
+              <li>
+                <a href={l.href} class="mobile-link" aria-current={current(l.match)} data-status-link={l.status ? "" : undefined}>
+                  {l.status ? <StatusDot>{l.label}</StatusDot> : l.label}
+                </a>
+              </li>
+            ))
+          }
+          <li>
+            <a href={github} class="mobile-link" rel="noopener">
+              {t(locale, "nav.github")}
+              <ExternalLink class="h-4 w-4" aria-hidden="true" />
+              <span class="sr-only">{t(locale, "common.external")}</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+    </nav>
+  </div>
+  <div class="brand-line" aria-hidden="true"></div>
+</header>
+
+<style>
+  .nav-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    min-height: 2.75rem;
+    padding: 0 0.75rem;
+    border-radius: var(--radius-md);
+    color: var(--color-fg-1);
+    font-size: 0.9375rem;
+    font-weight: 500;
+    text-decoration: none;
+  }
+  .nav-link:hover,
+  .nav-link[aria-current="page"] {
+    color: var(--color-fg-0);
+    background: var(--color-bg-2);
+  }
+  .menu-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+    padding: 0 0.875rem;
+    border: 1px solid var(--color-line-strong);
+    border-radius: var(--radius-md);
+    color: var(--color-fg-0);
+    font-size: 0.9375rem;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .menu-button:hover {
+    background: var(--color-bg-2);
+  }
+  .menu-button .icon-close,
+  .menu-button[aria-expanded="true"] .icon-open {
+    display: none;
+  }
+  .menu-button[aria-expanded="true"] .icon-close {
+    display: block;
+  }
+  .mobile-menu {
+    position: absolute;
+    inset-inline: 0;
+    top: 100%;
+    border-bottom: 1px solid var(--color-line);
+    background: var(--color-bg-1);
+    box-shadow: 0 1rem 2rem rgb(0 0 0 / 0.4);
+  }
+  .mobile-link {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 3rem;
+    padding: 0 0.5rem;
+    border-radius: var(--radius-md);
+    color: var(--color-fg-0);
+    font-size: 1rem;
+    font-weight: 500;
+    text-decoration: none;
+  }
+  .mobile-link:hover,
+  .mobile-link[aria-current="page"] {
+    background: var(--color-bg-3);
+  }
+  /* Wide screens show the list, narrow screens the menu button (both rules here, scoped, so nothing overrides). */
+  .nav-list {
+    display: none;
+  }
+  /* Six items need about 900 px with the logo: below 64rem the menu button takes over. */
+  @media (min-width: 64rem) {
+    .nav-list {
+      display: flex;
+    }
+    .menu-button,
+    .mobile-menu {
+      display: none;
+    }
+  }
+</style>
+
+<script>
+  // The menu of narrow screens: the button toggles the panel and aria-expanded; Escape closes it and returns the
+  // focus to the button, as do a click outside and a click on a link (anchors on the same page).
+  const button = document.querySelector<HTMLButtonElement>("[data-menu-button]");
+  const panel = document.querySelector<HTMLElement>("[data-menu-panel]");
+  if (button && panel) {
+    const setOpen = (open: boolean, focusButton = false) => {
+      button.setAttribute("aria-expanded", String(open));
+      panel.hidden = !open;
+      if (!open && focusButton) button.focus();
+    };
+    button.addEventListener("click", () => setOpen(button.getAttribute("aria-expanded") !== "true"));
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && !panel.hidden) setOpen(false, true);
+    });
+    document.addEventListener("click", (e) => {
+      if (!panel.hidden && e.target instanceof Node && !panel.contains(e.target) && !button.contains(e.target)) setOpen(false);
+    });
+    panel.addEventListener("click", (e) => {
+      if (e.target instanceof Element && e.target.closest("a")) setOpen(false);
+    });
+    matchMedia("(min-width: 64rem)").addEventListener("change", (e) => e.matches && setOpen(false));
+  }
+</script>

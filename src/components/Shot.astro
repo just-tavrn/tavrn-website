@@ -1,0 +1,105 @@
+---
+// SPDX-License-Identifier: Apache-2.0
+// A screenshot in a CSS-drawn frame: a window with a title bar and three dots for desktop scenes, a phone
+// outline for "-phone" scenes. No vendor device images. WebP with a PNG fallback in several widths.
+import { Picture } from "astro:assets";
+import { isPhone, screenshot, type SceneKey } from "../assets/screenshots/manifest";
+
+interface Props {
+  scene: SceneKey;
+  /** The LCP image of the page: eager and high priority. Everything else loads lazily. */
+  priority?: boolean;
+  /** The `sizes` attribute; defaults fit the content width. */
+  sizes?: string;
+  caption?: boolean;
+  class?: string;
+}
+
+const { scene, priority = false, sizes, caption = false, class: className } = Astro.props;
+const shot = screenshot(scene);
+const phone = isPhone(scene);
+const widths = phone ? [200, 300, 390] : [480, 720, 960, 1200, 1440];
+const defaultSizes = phone ? "(min-width: 48rem) 16rem, 60vw" : "(min-width: 72rem) 68rem, calc(100vw - 2rem)";
+---
+
+<figure class:list={["shot", phone ? "shot-phone" : "shot-window", className]}>
+  <div class="frame">
+    {
+      !phone && (
+        <div class="bar" aria-hidden="true">
+          <span />
+          <span />
+          <span />
+        </div>
+      )
+    }
+    {phone && <div class="notch" aria-hidden="true" />}
+    <Picture
+      src={shot.image}
+      alt={shot.alt}
+      formats={["webp"]}
+      fallbackFormat="png"
+      widths={widths}
+      sizes={sizes ?? defaultSizes}
+      loading={priority ? "eager" : "lazy"}
+      decoding={priority ? "sync" : "async"}
+      fetchpriority={priority ? "high" : "auto"}
+      class="screen"
+    />
+  </div>
+  {caption && <figcaption class="mt-3 text-sm text-fg-2">{shot.caption}</figcaption>}
+</figure>
+
+<style>
+  .shot {
+    margin: 0;
+  }
+  .frame {
+    position: relative;
+    overflow: hidden;
+    background: var(--color-bg-1);
+    border: 1px solid var(--color-line);
+    box-shadow:
+      0 0 0 1px rgb(0 0 0 / 0.3),
+      0 1.5rem 3rem -1rem rgb(0 0 0 / 0.6);
+  }
+  .shot-window .frame {
+    border-radius: 0.75rem;
+  }
+  .bar {
+    display: flex;
+    gap: 0.375rem;
+    align-items: center;
+    height: 1.75rem;
+    padding: 0 0.75rem;
+    background: var(--color-bg-0);
+    border-bottom: 1px solid var(--color-line);
+  }
+  .bar span {
+    width: 0.625rem;
+    height: 0.625rem;
+    border-radius: 999px;
+    background: var(--color-line-strong);
+  }
+  .shot-phone .frame {
+    border-radius: 2rem;
+    border: 0.5rem solid var(--color-bg-3);
+    outline: 1px solid var(--color-line-strong);
+  }
+  .notch {
+    position: absolute;
+    top: 0.375rem;
+    left: 50%;
+    width: 30%;
+    height: 0.875rem;
+    transform: translateX(-50%);
+    border-radius: 999px;
+    background: var(--color-bg-3);
+    z-index: 1;
+  }
+  .frame :global(img) {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+</style>

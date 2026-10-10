@@ -1,0 +1,57 @@
+---
+title: Bots and integrations
+description: What bots are, what they can see in encrypted channels, how to add one, no-bots zones, and webhooks that post into channels.
+sidebar:
+  order: 11
+---
+
+import Screenshot from "../../../components/docs/Screenshot.astro";
+
+A **bot** is an account that belongs to a person, its owner. Bots carry a **Bot** badge everywhere, so you always
+know when you talk to one. They can answer commands, post messages and help with moderation.
+
+## What a bot can see
+
+In an encrypted channel, a bot reads and writes only as a regular member of the channel's encryption, just like a
+person's device. It can read every encrypted channel it can view, and nothing else. When a bot joins or leaves an
+encrypted channel, the channel shows a notice to everyone.
+
+## Adding a bot to a room
+
+Bots join rooms only with consent. Open the bot's **add link** (its owner shares it) and choose a room where you
+may manage the room. The consent screen shows who owns the bot and the permissions it asks for. The bot then joins
+with a role of exactly the permissions you confirmed, and never more than you have yourself.
+
+<Screenshot scene="consent-desktop" />
+
+**Room settings → Applications** lists the installed bots. Removing one takes it out of the room and deletes its
+role. If the owner of a bot is banned, their bots go too.
+
+<Screenshot scene="room-applications-desktop" />
+
+## No-bots zones
+
+Bot tokens are a single secret, without a second factor. For sensitive places, a room, a category or a single
+channel can be marked **No bots**: bots can then neither see nor join it, whatever their roles. New rooms keep their
+encrypted channels closed to bots unless a channel explicitly allows them.
+
+## Commands
+
+Bots add their own slash commands, which appear in the command list when you type `/`. In encrypted
+conversations, what you type after the command is encrypted too.
+
+## Webhooks
+
+A **webhook** is a secret address that another service, such as a build server or a monitoring tool, uses to post
+messages into a channel. Room admins create them under **Room settings → Webhooks**. Posts from a webhook carry a
+badge so you can tell them apart.
+
+Webhooks can post into encrypted channels as well, without being able to read them: the post is sealed with a key
+that only the channel's members can open.
+
+<Screenshot scene="bots-desktop" />
+
+## Writing your own bot
+
+Anyone can create a bot under **Settings → Applications**. The developer pages describe the
+[bot runtime](/docs/developers/sdk/bot/) and the [protocol for applications](/docs/developers/protocol/applications/).

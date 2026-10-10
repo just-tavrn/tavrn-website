@@ -1,0 +1,12 @@
+# A single package; the file exists for pnpm's settings.
+packages:
+  - "."
+
+# Only these packages may run install scripts (pnpm >= 12: allowBuilds).
+allowBuilds:
+  esbuild: true
+  sharp: true
+
+# Exempt from pnpm's minimum release age (installed while the release was fresh); drop at the next update.
+minimumReleaseAgeExclude:
+  - "@lucide/astro@1.54.0"

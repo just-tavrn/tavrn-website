@@ -1,0 +1,173 @@
+---
+// SPDX-License-Identifier: Apache-2.0
+// "What the node operator sees": a switch flips a short chat between the readable messages (what the members
+// see) and opaque blocks (what the node stores and forwards). The blocks are generated at build time from the
+// text, so they look like ciphertext; nothing here is real cryptography.
+import { createHash } from "node:crypto";
+import { rich, t } from "../i18n";
+
+const locale = Astro.currentLocale;
+const messages = [
+  { author: "Mira", initial: "M", text: t(locale, "e2ee.msg1") },
+  { author: "Jonas", initial: "J", text: t(locale, "e2ee.msg2") },
+  { author: "Lena", initial: "L", text: t(locale, "e2ee.msg3") },
+];
+/** Base64 of a hash chain, about 1.6 times as long as the text: looks like a sealed message. */
+function sealed(text: string): string {
+  let out = "";
+  let block = createHash("sha256").update(text).digest();
+  while (out.length < Math.max(24, text.length * 1.6)) {
+    out += block.toString("base64").replace(/=+$/, "");
+    block = createHash("sha256").update(block).digest();
+  }
+  return out.slice(0, Math.max(24, Math.round(text.length * 1.6)));
+}
+---
+
+<div class="e2ee" data-e2ee>
+  <div class="flex flex-wrap items-center justify-between gap-4 border-b border-line px-4 py-3 sm:px-5">
+    <p class="text-sm font-semibold text-fg-0">
+      <span class="view-plain">{t(locale, "e2ee.view_members")}</span>
+      <span class="view-cipher">{t(locale, "e2ee.view_node")}</span>
+    </p>
+    <button type="button" role="switch" aria-checked="false" class="switch" data-e2ee-switch hidden>
+      <span class="track" aria-hidden="true"><span class="thumb"></span></span>
+      <span>{t(locale, "e2ee.switch")}</span>
+    </button>
+  </div>
+  <ul class="space-y-4 px-4 py-5 sm:px-5">
+    {
+      messages.map((m) => (
+        <li class="flex gap-3">
+          <span class="avatar" aria-hidden="true">
+            {m.initial}
+          </span>
+          <div class="min-w-0 flex-1">
+            <p class="text-sm font-semibold text-fg-0">{m.author}</p>
+            <p class="plain text-fg-1">{m.text}</p>
+            <p class="cipher">
+              <span aria-hidden="true" translate="no">{sealed(m.text)}</span>
+              <span class="sr-only">{t(locale, "e2ee.sealed_sr")}</span>
+            </p>
+          </div>
+        </li>
+      ))
+    }
+  </ul>
+  <p class="border-t border-line px-4 py-3 text-sm text-fg-2 sm:px-5" aria-live="polite" data-e2ee-status>
+    <span class="view-plain" set:html={rich(locale, "e2ee.status_members")} />
+    <span class="view-cipher" set:html={rich(locale, "e2ee.status_node")} />
+  </p>
+</div>
+
+<style>
+  .e2ee {
+    border: 1px solid var(--color-line);
+    border-radius: 0.75rem;
+    background: var(--color-bg-1);
+    overflow: hidden;
+  }
+  .avatar {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 999px;
+    background: var(--color-bg-3);
+    color: var(--color-fg-0);
+    font-weight: 700;
+    font-size: 0.875rem;
+  }
+  .cipher {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.8125rem;
+    color: var(--color-fg-2);
+    overflow-wrap: anywhere;
+    letter-spacing: 0.02em;
+  }
+  .cipher span[aria-hidden] {
+    background: var(--color-bg-3);
+    border-radius: 0.25rem;
+    padding: 0.125rem 0.375rem;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+    line-height: 1.9;
+  }
+  .cipher,
+  .view-cipher,
+  [data-sealed] .plain,
+  [data-sealed] .view-plain {
+    display: none;
+  }
+  [data-sealed] .cipher {
+    display: block;
+  }
+  [data-sealed] .view-cipher {
+    display: inline;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    [data-sealed] .cipher,
+    .plain {
+      animation: e2ee-fade 0.25s ease-out;
+    }
+  }
+  @keyframes e2ee-fade {
+    from {
+      opacity: 0;
+    }
+  }
+  .switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.625rem;
+    min-height: 2.75rem;
+    padding: 0 0.25rem;
+    color: var(--color-fg-0);
+    font-size: 0.9375rem;
+    font-weight: 500;
+    cursor: pointer;
+    border-radius: var(--radius-md);
+  }
+  .track {
+    position: relative;
+    width: 2.75rem;
+    height: 1.5rem;
+    border-radius: 999px;
+    background: var(--color-bg-3);
+    border: 1px solid var(--color-line-strong);
+    transition: background-color 0.15s;
+  }
+  .thumb {
+    position: absolute;
+    top: 0.1875rem;
+    left: 0.1875rem;
+    width: 1rem;
+    height: 1rem;
+    border-radius: 999px;
+    background: var(--color-fg-1);
+    transition: transform 0.15s, background-color 0.15s;
+  }
+  .switch[aria-checked="true"] .track {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+  }
+  .switch[aria-checked="true"] .thumb {
+    transform: translateX(1.25rem);
+    background: var(--color-accent-text);
+  }
+</style>
+
+<script>
+  for (const root of document.querySelectorAll<HTMLElement>("[data-e2ee]")) {
+    const toggle = root.querySelector<HTMLButtonElement>("[data-e2ee-switch]");
+    if (!toggle) continue;
+    toggle.addEventListener("click", () => {
+      const sealed = toggle.getAttribute("aria-checked") !== "true";
+      toggle.setAttribute("aria-checked", String(sealed));
+      root.toggleAttribute("data-sealed", sealed);
+    });
+    toggle.hidden = false;
+  }
+</script>

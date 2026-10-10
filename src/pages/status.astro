@@ -1,0 +1,348 @@
+---
+// SPDX-License-Identifier: Apache-2.0
+// The status page: the live check of the official node (Preact island, src/components/status/NodeStatus.tsx) and
+// the uptime history from Uptime Kuma when it is configured. The island reads the node's address from /config.json
+// at runtime (deploy/Caddyfile), so the same build serves any deployment.
+import NodeStatus from "../components/status/NodeStatus";
+import Site from "../layouts/Site.astro";
+import { MESSAGES, DEFAULT_LOCALE, escapeHtml, localePath, resolveLocale, rich, t } from "../i18n";
+
+const locale = Astro.currentLocale;
+const strings = Object.fromEntries(
+  Object.keys(MESSAGES[DEFAULT_LOCALE])
+    .filter((k) => k.startsWith("status.") && k !== "status.lead" && k !== "status.title")
+    .map((k) => [k, t(locale, k)]),
+);
+---
+
+<Site title={t(locale, "status.title")} description={t(locale, "status.lead")}>
+  <section class="container-site pt-16 pb-20 md:pt-24 md:pb-28">
+    <h1 class="text-4xl font-bold tracking-tight text-fg-0 md:text-5xl">{t(locale, "status.title")}</h1>
+    <p class="mt-4 max-w-2xl text-lg text-fg-1" set:html={rich(locale, "status.lead")} />
+    <noscript><p class="ns-noscript">{t(locale, "status.nojs")}</p></noscript>
+    <div class="mt-8">
+      <NodeStatus client:load strings={strings} locale={resolveLocale(locale)} />
+    </div>
+    <p
+      class="mt-10 text-fg-1"
+      set:html={rich(locale, "issues.status_hint", {
+        linkHtml: `<a class="link" href="${localePath(locale, "/issues")}">${escapeHtml(t(locale, "issues.status_link"))}</a>`,
+      })}
+    />
+  </section>
+</Site>
+
+<style is:global>
+  .node-status {
+    display: grid;
+    gap: 1rem;
+  }
+  @media (min-width: 64rem) {
+    .node-status {
+      grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+      align-items: start;
+    }
+    .node-status > :last-child {
+      grid-column: 1 / -1;
+    }
+  }
+  .ns-noscript {
+    margin-top: 1.5rem;
+    color: var(--color-fg-1);
+  }
+  .ns-card {
+    border: 1px solid var(--color-line);
+    border-radius: 0.75rem;
+    background: var(--color-bg-1);
+    padding: 1.25rem;
+    min-width: 0;
+  }
+  @media (min-width: 48rem) {
+    .ns-card {
+      padding: 1.5rem;
+    }
+  }
+  .ns-label {
+    color: var(--color-fg-2);
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .ns-state {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 3rem;
+    margin-top: 0.25rem;
+    color: var(--color-fg-0);
+    font-size: 1.75rem;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+  .node-status[data-state="unknown"] .ns-state {
+    font-size: 1.125rem;
+    font-weight: 600;
+  }
+  .ns-dot {
+    position: relative;
+    flex: none;
+    width: 0.875rem;
+    height: 0.875rem;
+    border-radius: 999px;
+    background: var(--color-line-strong);
+  }
+  .node-status[data-state="operational"] .ns-dot {
+    background: var(--color-ok);
+  }
+  .node-status[data-state="degraded"] .ns-dot {
+    background: var(--color-warn);
+  }
+  .node-status[data-state="unreachable"] .ns-dot {
+    background: var(--color-danger);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .node-status[data-state="operational"] .ns-dot::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: var(--color-ok);
+      animation: ns-pulse 2.4s ease-out infinite;
+    }
+    .node-status[data-state="checking"] .ns-dot {
+      animation: ns-blink 1.2s ease-in-out infinite alternate;
+    }
+  }
+  @keyframes ns-pulse {
+    from {
+      opacity: 0.6;
+      transform: scale(1);
+    }
+    to {
+      opacity: 0;
+      transform: scale(2.6);
+    }
+  }
+  @keyframes ns-blink {
+    to {
+      opacity: 0.35;
+    }
+  }
+  .ns-node {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 0.625rem;
+    min-height: 1.75rem;
+    margin-top: 0.5rem;
+    color: var(--color-fg-0);
+    font-size: 1.0625rem;
+    font-weight: 600;
+  }
+  .ns-node-domain {
+    color: var(--color-fg-1);
+    font-weight: 400;
+    font-size: 0.9375rem;
+  }
+  .ns-messages {
+    min-height: 3rem;
+    margin-top: 0.75rem;
+    color: var(--color-fg-1);
+    font-size: 0.9375rem;
+    line-height: 1.6;
+  }
+  .ns-messages ul {
+    list-style: disc;
+    padding-left: 1.25rem;
+  }
+  .ns-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 1rem;
+    margin-top: 1rem;
+  }
+  .ns-refresh {
+    min-width: 9rem;
+  }
+  .ns-refresh:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+  .ns-time {
+    min-height: 1.5rem;
+    color: var(--color-fg-2);
+    font-size: 0.875rem;
+  }
+  .ns-h2 {
+    color: var(--color-fg-0);
+    font-size: 1.25rem;
+    font-weight: 650;
+  }
+  .ns-h3 {
+    color: var(--color-fg-0);
+    font-size: 1rem;
+    font-weight: 600;
+  }
+  .ns-fields {
+    display: grid;
+    gap: 0.875rem 1.5rem;
+    margin-top: 1rem;
+  }
+  @media (min-width: 40rem) {
+    .ns-fields {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  .ns-fields dt {
+    color: var(--color-fg-2);
+    font-size: 0.8125rem;
+    font-weight: 600;
+  }
+  .ns-fields dd {
+    margin-top: 0.125rem;
+    color: var(--color-fg-0);
+    min-height: 1.5rem;
+    overflow-wrap: anywhere;
+  }
+  .ns-checks {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.9375rem;
+  }
+  .ns-checks li {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .ns-check-dot {
+    width: 0.625rem;
+    height: 0.625rem;
+    flex: none;
+    border-radius: 999px;
+    border: 2px solid var(--color-line-strong);
+  }
+  .ns-checks [data-tone="ok"] .ns-check-dot {
+    background: var(--color-ok);
+    border-color: var(--color-ok);
+  }
+  .ns-checks [data-tone="danger"] .ns-check-dot {
+    background: var(--color-danger);
+    border-color: var(--color-danger);
+  }
+  .ns-caps {
+    margin-top: 1.25rem;
+    border-top: 1px solid var(--color-line);
+    padding-top: 0.5rem;
+  }
+  .ns-caps summary {
+    display: flex;
+    align-items: center;
+    min-height: 2.75rem;
+    cursor: pointer;
+    color: var(--color-fg-0);
+    font-weight: 600;
+  }
+  .ns-caps-hint {
+    color: var(--color-fg-1);
+    font-size: 0.9375rem;
+  }
+  .ns-caps ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    margin-top: 0.75rem;
+  }
+  .ns-caps code {
+    display: inline-block;
+    border: 1px solid var(--color-line);
+    border-radius: 0.25rem;
+    background: var(--color-bg-2);
+    padding: 0.125rem 0.375rem;
+    color: var(--color-fg-0);
+    font-size: 0.8125rem;
+  }
+  .ns-note {
+    margin-top: 0.75rem;
+    min-height: 1.5rem;
+    color: var(--color-fg-1);
+  }
+  .ns-monitors {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    margin-top: 1rem;
+  }
+  .ns-monitor-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.25rem 1rem;
+  }
+  .ns-uptime {
+    display: flex;
+    gap: 1.25rem;
+  }
+  .ns-uptime div {
+    display: flex;
+    gap: 0.375rem;
+    align-items: baseline;
+  }
+  .ns-uptime dt {
+    color: var(--color-fg-2);
+    font-size: 0.8125rem;
+  }
+  .ns-uptime dd {
+    color: var(--color-fg-0);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .ns-bar {
+    display: block;
+    width: 100%;
+    height: 1.75rem;
+    margin-top: 0.5rem;
+  }
+  .ns-incidents {
+    margin-top: 1rem;
+  }
+  .ns-incident {
+    margin-top: 0.5rem;
+    border: 1px solid var(--color-line);
+    border-left: 3px solid var(--color-warn);
+    border-radius: var(--radius-md);
+    background: var(--color-bg-2);
+    padding: 0.75rem 1rem;
+  }
+  .ns-incident[data-style="danger"] {
+    border-left-color: var(--color-danger);
+  }
+  .ns-incident[data-style="info"],
+  .ns-incident[data-style="primary"] {
+    border-left-color: var(--color-accent);
+  }
+  .ns-incident[data-style="success"] {
+    border-left-color: var(--color-ok);
+  }
+  .ns-incident-title {
+    color: var(--color-fg-0);
+    font-weight: 600;
+  }
+  .ns-incident-text {
+    margin-top: 0.25rem;
+    color: var(--color-fg-1);
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+  }
+  .ns-incident-date {
+    margin-top: 0.375rem;
+    color: var(--color-fg-2);
+    font-size: 0.8125rem;
+  }
+  .ns-more {
+    margin-top: 1rem;
+  }
+</style>

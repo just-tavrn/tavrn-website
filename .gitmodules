@@ -1,0 +1,20 @@
+[submodule "sources/tavrn"]
+	path = sources/tavrn
+	url = https://github.com/just-tavrn/tavrn.git
+	branch = main
+[submodule "sources/tavrn-node"]
+	path = sources/tavrn-node
+	url = https://github.com/just-tavrn/tavrn-node.git
+	branch = main
+[submodule "sources/tavrn-protocol"]
+	path = sources/tavrn-protocol
+	url = https://github.com/just-tavrn/tavrn-protocol.git
+	branch = main
+[submodule "sources/tavrn-js"]
+	path = sources/tavrn-js
+	url = https://github.com/just-tavrn/tavrn-js.git
+	branch = main
+[submodule "sources/tavrn-web"]
+	path = sources/tavrn-web
+	url = https://github.com/just-tavrn/tavrn-web.git
+	branch = main

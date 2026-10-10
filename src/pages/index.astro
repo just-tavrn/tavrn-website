@@ -1,0 +1,299 @@
+---
+// SPDX-License-Identifier: Apache-2.0
+// The landing page for people who want to use tavrn: what it is, what is different, how it works, a tour, how
+// to self-host, and where to start. No React here; the interactive parts are small vanilla scripts.
+import Bot from "@lucide/astro/icons/bot";
+import Container from "@lucide/astro/icons/container";
+import Download from "@lucide/astro/icons/download";
+import Globe from "@lucide/astro/icons/globe";
+import Lock from "@lucide/astro/icons/lock";
+import Mic from "@lucide/astro/icons/mic";
+import ShieldCheck from "@lucide/astro/icons/shield-check";
+import ArrowRight from "@lucide/astro/icons/arrow-right";
+import { PUBLIC_GITHUB_ORG } from "astro:env/client";
+import E2eeToggle from "../components/E2eeToggle.astro";
+import Federation from "../components/Federation.astro";
+import Showcase from "../components/Showcase.astro";
+import Shot from "../components/Shot.astro";
+import Site from "../layouts/Site.astro";
+import { localePath, rich, t } from "../i18n";
+
+const locale = Astro.currentLocale;
+const features = [
+  { id: "e2ee", icon: Lock },
+  { id: "federation", icon: Globe },
+  { id: "voice", icon: Mic },
+  { id: "bots", icon: Bot },
+  { id: "moderation", icon: ShieldCheck },
+  { id: "selfhost", icon: Container },
+];
+import { Image } from "astro:assets";
+import heroBackground from "../assets/brand/hero-background.png";
+
+const steps = ["home", "room", "notify"];
+const composeUrl = `https://github.com/${PUBLIC_GITHUB_ORG}/tavrn-node/tree/main/deploy`;
+---
+
+<Site>
+  <!-- Hero -->
+  <section class="hero relative overflow-hidden" aria-labelledby="hero-title">
+    <!-- Decorative brand background (soft teal and blue glow), under the hero text; the CSS glow stays as the
+         fallback while it loads. Low priority so the chat screenshot keeps the LCP. -->
+    <div class="hero-glow" aria-hidden="true"></div>
+    <Image
+      src={heroBackground}
+      alt=""
+      aria-hidden="true"
+      class="hero-bg"
+      widths={[960, 1440, 1920]}
+      sizes="100vw"
+      format="webp"
+      quality={70}
+      loading="eager"
+      fetchpriority="low"
+      decoding="async"
+    />
+    <div class="container-site relative pt-14 pb-16 md:pt-20 md:pb-24">
+      <div class="mx-auto max-w-3xl text-center">
+        <p class="text-sm font-semibold tracking-wide text-accent uppercase">{t(locale, "hero.eyebrow")}</p>
+        <h1 id="hero-title" class="mt-4 text-4xl font-bold tracking-tight text-balance text-fg-0 sm:text-5xl md:text-6xl">
+          {t(locale, "hero.title")}
+        </h1>
+        <p class="mx-auto mt-6 max-w-2xl text-lg text-pretty text-fg-1" set:html={rich(locale, "hero.lead")} />
+        <div class="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+          <a href={localePath(locale, "/download")} class="btn btn-primary">
+            <Download class="h-4 w-4" aria-hidden="true" />
+            {t(locale, "hero.cta_download")}
+          </a>
+          <a href="/app" class="btn btn-secondary">
+            {t(locale, "hero.cta_web")}
+            <ArrowRight class="h-4 w-4" aria-hidden="true" />
+          </a>
+        </div>
+        <p class="mt-5 text-sm text-fg-2" set:html={rich(locale, "hero.status")} />
+      </div>
+      <div class="relative mx-auto mt-12 max-w-5xl md:mt-16">
+        <Shot scene="chat-desktop" priority />
+        <Shot scene="chat-phone" class="hero-phone hidden lg:block" sizes="12rem" />
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section id="features" class="container-site py-16 md:py-24" aria-labelledby="features-title">
+    <div class="max-w-2xl" data-reveal>
+      <h2 id="features-title" class="text-3xl font-bold tracking-tight text-fg-0 md:text-4xl">{t(locale, "features.title")}</h2>
+      <p class="mt-4 text-lg text-fg-1">{t(locale, "features.lead")}</p>
+    </div>
+    <ul class="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {
+        features.map(({ id, icon: Icon }) => (
+          <li class="feature" data-reveal>
+            <span class="feature-icon" aria-hidden="true">
+              <Icon class="h-5 w-5" />
+            </span>
+            <h3 class="mt-4 text-lg font-semibold text-fg-0">{t(locale, `features.${id}.title`)}</h3>
+            <p class="mt-2 text-fg-1" set:html={rich(locale, `features.${id}.text`)} />
+          </li>
+        ))
+      }
+    </ul>
+  </section>
+
+  <!-- How it works -->
+  <section id="how-it-works" class="border-y border-line bg-bg-1 py-16 md:py-24" aria-labelledby="how-title">
+    <div class="container-site">
+      <div class="max-w-2xl" data-reveal>
+        <h2 id="how-title" class="text-3xl font-bold tracking-tight text-fg-0 md:text-4xl">{t(locale, "how.title")}</h2>
+        <p class="mt-4 text-lg text-fg-1">{t(locale, "how.lead")}</p>
+      </div>
+      <ol class="mt-10 grid gap-4 md:grid-cols-3">
+        {
+          steps.map((s, i) => (
+            <li class="step" data-reveal>
+              <span class="step-number" aria-hidden="true">{i + 1}</span>
+              <h3 class="mt-3 text-lg font-semibold text-fg-0">{t(locale, `how.${s}.title`)}</h3>
+              <p class="mt-2 text-fg-1" set:html={rich(locale, `how.${s}.text`)} />
+            </li>
+          ))
+        }
+      </ol>
+      <div class="mt-12 rounded-xl border border-line bg-bg-0 p-4 sm:p-8" data-reveal>
+        <h3 class="sr-only">{t(locale, "fed.heading")}</h3>
+        <Federation />
+      </div>
+    </div>
+  </section>
+
+  <!-- Encryption -->
+  <section id="encryption" class="container-site py-16 md:py-24" aria-labelledby="e2ee-title">
+    <div class="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
+      <div data-reveal>
+        <h2 id="e2ee-title" class="text-3xl font-bold tracking-tight text-fg-0 md:text-4xl">{t(locale, "e2ee.title")}</h2>
+        <p class="mt-4 text-lg text-fg-1">{t(locale, "e2ee.lead")}</p>
+        <p class="mt-4 text-fg-2" set:html={rich(locale, "e2ee.honest")} />
+      </div>
+      <div data-reveal>
+        <E2eeToggle />
+      </div>
+    </div>
+  </section>
+
+  <!-- Tour -->
+  <section id="tour" class="border-y border-line bg-bg-1 py-16 md:py-24" aria-labelledby="tour-title">
+    <div class="container-site">
+      <div class="max-w-2xl" data-reveal>
+        <h2 id="tour-title" class="text-3xl font-bold tracking-tight text-fg-0 md:text-4xl">{t(locale, "tour.title")}</h2>
+        <p class="mt-4 text-lg text-fg-1">{t(locale, "tour.lead")}</p>
+      </div>
+      <div class="mt-10">
+        <Showcase />
+      </div>
+    </div>
+  </section>
+
+  <!-- Self-host -->
+  <section id="self-host" class="container-site py-16 md:py-24" aria-labelledby="selfhost-title">
+    <div class="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
+      <div data-reveal>
+        <h2 id="selfhost-title" class="text-3xl font-bold tracking-tight text-fg-0 md:text-4xl">{t(locale, "selfhost.title")}</h2>
+        <p class="mt-4 text-lg text-fg-1" set:html={rich(locale, "selfhost.lead")} />
+        <p class="mt-4 text-fg-1" set:html={rich(locale, "selfhost.needs")} />
+        <div class="mt-6 flex flex-col gap-3 sm:flex-row">
+          <a href={localePath(locale, "/docs/admins/install/")} class="btn btn-primary">{t(locale, "selfhost.cta_guide")}</a>
+          <a href={composeUrl} class="btn btn-secondary" rel="noopener">
+            {t(locale, "selfhost.cta_compose")}
+            <span class="sr-only">{t(locale, "common.external")}</span>
+          </a>
+        </div>
+      </div>
+      <figure class="min-w-0" data-reveal>
+        <pre class="code" translate="no" tabindex="0" aria-label={t(locale, "selfhost.code_label")}><code><span class="c"># {t(locale, "selfhost.code_comment1")}</span>
+cp .env.example .env  <span class="c"># {t(locale, "selfhost.code_comment2")}</span>
+docker compose up -d</code></pre>
+        <figcaption class="mt-3 text-sm text-fg-2">{t(locale, "selfhost.code_caption")}</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- Closing call to action -->
+  <section class="container-site" aria-labelledby="cta-title">
+    <div class="cta relative overflow-hidden rounded-2xl border border-line px-6 py-12 text-center sm:px-12 md:py-16" data-reveal>
+      <h2 id="cta-title" class="text-3xl font-bold tracking-tight text-fg-0 md:text-4xl">{t(locale, "cta.title")}</h2>
+      <p class="mx-auto mt-4 max-w-xl text-lg text-fg-1">{t(locale, "cta.lead")}</p>
+      <div class="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+        <a href={localePath(locale, "/download")} class="btn btn-primary">
+          <Download class="h-4 w-4" aria-hidden="true" />
+          {t(locale, "hero.cta_download")}
+        </a>
+        <a href="/app" class="btn btn-secondary">{t(locale, "hero.cta_web")}</a>
+        <a href={localePath(locale, "/docs/")} class="btn btn-secondary">{t(locale, "cta.docs")}</a>
+      </div>
+      <p class="mx-auto mt-8 max-w-xl text-sm text-fg-2" set:html={rich(locale, "cta.honest")} />
+    </div>
+  </section>
+</Site>
+
+<style>
+  .hero-glow {
+    position: absolute;
+    inset: -20rem -10rem auto;
+    height: 40rem;
+    background:
+      radial-gradient(ellipse 50% 50% at 50% 50%, color-mix(in srgb, var(--color-brand-teal) 16%, transparent), transparent 70%),
+      radial-gradient(ellipse 35% 40% at 75% 40%, color-mix(in srgb, var(--color-brand-deep) 35%, transparent), transparent 70%);
+    pointer-events: none;
+  }
+  .hero-bg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.9;
+    pointer-events: none;
+    /* Fades into the page background so the section below starts on a clean edge. */
+    mask-image: linear-gradient(to bottom, black 55%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, black 55%, transparent 100%);
+  }
+  .hero-phone {
+    position: absolute;
+    right: -2.5rem;
+    bottom: -3rem;
+    width: 12rem;
+  }
+  .feature,
+  .step {
+    border: 1px solid var(--color-line);
+    border-radius: 0.75rem;
+    background: var(--color-bg-1);
+    padding: 1.5rem;
+  }
+  .step {
+    background: var(--color-bg-0);
+  }
+  .feature-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.625rem;
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
+  }
+  .step-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 999px;
+    border: 1px solid var(--color-accent);
+    color: var(--color-accent);
+    font-weight: 700;
+    font-size: 0.875rem;
+  }
+  .code {
+    overflow-x: auto;
+    border: 1px solid var(--color-line);
+    border-radius: 0.75rem;
+    background: var(--color-bg-1);
+    padding: 1.25rem 1.5rem;
+    font-size: 0.9375rem;
+    line-height: 1.8;
+    color: var(--color-fg-0);
+  }
+  .code .c {
+    color: var(--color-fg-2);
+  }
+  .cta {
+    background:
+      radial-gradient(ellipse 60% 80% at 50% 0%, color-mix(in srgb, var(--color-brand-teal) 12%, transparent), transparent 70%),
+      var(--color-bg-1);
+  }
+</style>
+
+<script>
+  // Subtle scroll reveal: only with IntersectionObserver and without a reduced-motion preference. What is already
+  // on screen is marked visible before the class goes on, so nothing above the fold flickers.
+  const items = [...document.querySelectorAll<HTMLElement>("[data-reveal]")];
+  const calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (!calm && "IntersectionObserver" in window && items.length > 0) {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          entry.target.classList.add("is-visible");
+          observer.unobserve(entry.target);
+        }
+      },
+      { rootMargin: "0px 0px -8% 0px" },
+    );
+    for (const el of items) {
+      if (el.getBoundingClientRect().top < innerHeight) el.classList.add("is-visible");
+      else observer.observe(el);
+    }
+    document.documentElement.classList.add("reveal-on");
+  }
+</script>

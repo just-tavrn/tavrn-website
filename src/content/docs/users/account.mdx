@@ -1,0 +1,68 @@
+---
+title: Your account
+description: The second factor, recovery codes, the recovery key, passkeys and your devices, and what each of them is for.
+sidebar:
+  order: 2
+---
+
+import Screenshot from "../../../components/docs/Screenshot.astro";
+
+Your account is protected in two ways: a **second factor** keeps others from signing in, and your **recovery key**
+lets you, and only you, read your encrypted messages on a new device. You find everything on this page under
+**Settings → Security**.
+
+<Screenshot scene="security-desktop" />
+
+## The second factor
+
+Every account on tavrn has a second factor, and nobody can switch it off, not even the operator of the node. You
+choose one when you register and can add more later:
+
+- an **authenticator app** on your phone that shows six-digit codes, or
+- a **passkey**: your fingerprint, your face, a PIN or a security key.
+
+<Screenshot scene="onboarding-desktop" />
+
+You need the second factor every time you sign in with your password. Keep at least one; two are better, so that
+losing your phone does not lock you out.
+
+## Recovery codes
+
+At registration you get ten **recovery codes**. Each of them lets you sign in once when your authenticator app or
+passkey is not at hand. They are shown only once, so save them, for example in a password manager. If you used
+some or think someone saw them, choose **Generate new codes**: the new codes replace all old ones.
+
+## The recovery key
+
+The **recovery key** is a list of 24 words (there is also a compact form of the same key). It unlocks your
+encrypted messages when you sign in on a new device or in a new browser. Your browser creates it, and it is never
+sent anywhere: neither the node nor its operator can restore it for you.
+
+<Screenshot scene="onboarding-recovery-key-desktop" />
+
+Because it is never stored, it cannot be shown again. If you lost it, or someone may have seen it, choose
+**Create new recovery key**: your messages stay readable, and the old key stops working.
+
+:::caution
+Recovery codes and the recovery key are different things. The codes help you **sign in**; the key **unlocks your
+messages**. Keep both.
+:::
+
+## Passkeys
+
+A passkey can replace the password: **Sign in with a passkey** needs nothing else. Passkeys marked **unlocks
+messages** can also unlock your encrypted messages on a new device, just like the recovery key.
+
+## Your devices
+
+Every browser and app you sign in with is a separate device with its own keys. A new device asks for your recovery
+key or a passkey once, then it reads your conversations. On a shared computer, turn on **Require the recovery key
+or a passkey every time**: closing the browser then locks your messages on that computer. Devices you have not
+used for a long time are removed by the node.
+
+<Screenshot scene="settings-devices-desktop" />
+
+Your **security key**, under **Settings → Security** as well, proves to others that your devices are yours. If
+you fear someone saw it but still have it, rotate it: your contacts follow the new key without a warning.
+
+<Screenshot scene="settings-security-desktop" />

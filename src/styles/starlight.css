@@ -1,0 +1,122 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* The docs (Starlight) in the site's look: Starlight's colour properties mapped onto the client's tokens. No
+   Tailwind preflight here, so Starlight's own reset and layout stay intact. Dark only (ThemeProvider override). */
+/* Processed by Tailwind only for the @theme tokens (the variables used below are emitted, nothing else). */
+@import "tailwindcss/theme.css" layer(theme);
+@import "./tokens.css";
+
+:root,
+::backdrop {
+  color-scheme: dark;
+  --sl-font: "Inter Variable", "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  --sl-color-white: var(--color-fg-0);
+  --sl-color-gray-1: var(--color-fg-0);
+  --sl-color-gray-2: var(--color-fg-1);
+  --sl-color-gray-3: var(--color-fg-2);
+  --sl-color-gray-4: var(--color-line-strong);
+  --sl-color-gray-5: var(--color-line);
+  --sl-color-gray-6: var(--color-bg-1);
+  --sl-color-black: var(--color-bg-0);
+
+  /* Accent: links and the current sidebar entry use accent-high (teal on dark, >= 5.2:1), text on it the dark
+     accent-text (6.28:1). */
+  --sl-color-accent-low: color-mix(in srgb, var(--color-accent) 18%, var(--color-bg-0));
+  --sl-color-accent: var(--color-accent);
+  --sl-color-accent-high: var(--color-accent);
+  --sl-color-text-accent: var(--color-accent);
+  --sl-color-text-invert: var(--color-accent-text);
+  --sl-color-bg-accent: var(--color-accent);
+
+  --sl-color-text: var(--color-fg-1);
+  --sl-color-bg: var(--color-bg-0);
+  --sl-color-bg-nav: var(--color-bg-0);
+  --sl-color-bg-sidebar: var(--color-bg-0);
+  --sl-color-bg-inline-code: var(--color-bg-3);
+  --sl-color-hairline-light: var(--color-line);
+  --sl-color-hairline: var(--color-line);
+  --sl-color-hairline-shade: var(--color-bg-0);
+
+  --sl-color-green: var(--color-ok);
+  --sl-color-orange: var(--color-warn);
+  --sl-color-red: var(--color-danger);
+
+  --sl-content-width: 46rem;
+}
+
+::selection { background: var(--color-brand-deep); color: var(--color-fg-0); }
+:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+
+/* The logo gradient as a thin line under the docs header, like on the rest of the site. */
+.header { border-bottom: 0; box-shadow: inset 0 -2px 0 0 color-mix(in srgb, var(--color-brand-teal) 55%, transparent); }
+
+/* Content links stay underlined (WCAG 1.4.1). */
+.sl-markdown-content a:not(:where(.not-content *)) { text-underline-offset: 3px; }
+
+/* Tables wrap instead of scrolling sideways (Starlight's default): a table that scrolls is a scroll region that
+   keyboard users cannot reach (axe: scrollable-region-focusable), and the wide tables of the synced docs (protocol,
+   configuration reference) would scroll on every phone. Text in cells may break anywhere, column headings do not. Code blocks keep
+   their scrolling; Expressive Code makes them focusable when they overflow. */
+.sl-markdown-content table:not(:where(.not-content *)) {
+  display: table;
+  overflow: visible;
+  overflow-wrap: anywhere;
+}
+.sl-markdown-content :is(th, td):not(:where(.not-content *)) code {
+  overflow-wrap: anywhere;
+}
+/* Column headings break only at spaces and hyphenation points, which keeps every column readably wide. */
+.sl-markdown-content th:not(:where(.not-content *)) {
+  white-space: normal;
+  overflow-wrap: normal;
+  hyphens: auto;
+}
+
+/* Mermaid diagrams (src/lib/mermaid.mjs, src/lib/mermaid-render.ts). Until a diagram is drawn, and without
+   JavaScript, its source shows like a code block; the drawing scrolls sideways inside its frame when it is wider
+   than the content. */
+.sl-markdown-content .mermaid-diagram {
+  margin-block: 1.5rem;
+}
+.sl-markdown-content pre.mermaid,
+.sl-markdown-content pre.mermaid-source {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  overflow-x: auto;
+  background: var(--color-bg-1);
+  border: 1px solid var(--color-line);
+  border-radius: 0.5rem;
+  color: var(--color-fg-1);
+  font-family: var(--__sl-font-mono, ui-monospace, monospace);
+  font-size: var(--sl-text-code-sm, 0.875rem);
+  white-space: pre;
+}
+.sl-markdown-content .mermaid-frame {
+  overflow-x: auto;
+  padding: 1rem;
+  background: var(--color-bg-1);
+  border: 1px solid var(--color-line);
+  border-radius: 0.5rem;
+}
+.sl-markdown-content .mermaid-frame svg {
+  display: block;
+  margin-inline: auto;
+  max-width: none;
+  height: auto;
+}
+.sl-markdown-content .mermaid-diagram details {
+  margin-top: 0.5rem;
+}
+.sl-markdown-content pre.mermaid-source {
+  margin-top: 0.5rem;
+}
+.sl-markdown-content .mermaid-diagram summary {
+  cursor: pointer;
+  color: var(--sl-color-gray-2);
+  font-size: var(--sl-text-sm);
+}
+.sl-markdown-content .mermaid-note {
+  margin-top: 0.5rem;
+  color: var(--sl-color-gray-2);
+  font-size: var(--sl-text-sm);
+}

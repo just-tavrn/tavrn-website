@@ -1,0 +1,39 @@
+---
+title: tavrn docs
+description: Guides for people who use tavrn, run a node or build on it.
+tableOfContents: false
+---
+
+import { CardGrid, LinkCard } from "@astrojs/starlight/components";
+
+tavrn is an open-source community chat with end-to-end encryption, voice and video, and federation. These pages
+explain how to use it, how to run your own node and how to build clients and bots. Pick the part that fits you.
+
+<CardGrid>
+  <LinkCard
+    title="Users"
+    description="Start chatting, keep your account safe, and find your way around rooms, voice, files and privacy."
+    href="/docs/users/getting-started/"
+  />
+  <LinkCard
+    title="Node admins"
+    description="Install a node with Docker Compose, configure it, put it behind your reverse proxy and keep it updated."
+    href="/docs/admins/overview/"
+  />
+  <LinkCard
+    title="Developers"
+    description="The architecture, the protocol, the SDK and the bot runtime, and how to contribute."
+    href="/docs/developers/overview/"
+  />
+</CardGrid>
+
+## Finding something
+
+Use the search in the header, or press <kbd>/</kbd> or <kbd>Ctrl</kbd>+<kbd>K</kbd>, to search every page, for
+example for "recovery key" or a variable such as `TAVRN_DOMAIN`. The search runs entirely in your browser.
+
+## Asking for help
+
+tavrn is in private review before its first public release. Questions and ideas are welcome in the
+[Discussions](https://github.com/just-tavrn/tavrn/discussions). The node admin and developer pages are copied from
+the repositories of the project every time this site is built, so they match the code.

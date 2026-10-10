@@ -1,0 +1,12 @@
+---
+// SPDX-License-Identifier: Apache-2.0
+// The product name: always lowercase "tavrn" and never machine-translated.
+import { BRAND } from "../i18n";
+
+interface Props {
+  class?: string;
+}
+const { class: className } = Astro.props;
+---
+
+<span translate="no" class={className}>{BRAND}</span>

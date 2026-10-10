@@ -1,0 +1,264 @@
+# tavrn website
+
+The source of <https://tavrn.org>: the landing page, downloads, the documentation (wiki), the status page of the
+official node, the roadmap and the legal pages of the tavrn project. It is a fully static site built with
+[Astro](https://astro.build) and [Starlight](https://starlight.astro.build), served by Caddy from a small container.
+
+> **Status: private review.** The site is being built before the project's first public release.
+
+## What is where
+
+| Path | What |
+|---|---|
+| `src/pages/` | The custom pages: landing (`index.astro`), `download`, `status`, `issues` (known issues), `report` (report a problem), `roadmap`, `legal/`, `404` |
+| `src/components/` | Header, footer, `Brand` (the name with `translate="no"`), `Shot` (screenshot frames), the landing's interactive parts (`Federation`, `E2eeToggle`, `Showcase`); `download/` the OS cards of the download page, `status/` the status page's Preact island (`NodeStatus`, `UptimeHistory`, written against the React API through `preact/compat`) and the live dot of the "Status" link (`StatusDot`, vanilla JavaScript); `issues/` the known-issues page's Preact island (`KnownIssues`) |
+| `src/content/docs/` | The wiki (Starlight), served under `/docs/`; its sidebar is `src/docs-sidebar.ts`. `users/` holds the hand-written user guides, `synced/` the pages generated from `sources/` (gitignored, see "The wiki and its sources") |
+| `src/content/pages/` | Markdown pages outside the wiki (the roadmap, generated from `sources/tavrn`) |
+| `sources/` | Git submodules of the repositories the wiki copies its operator and developer pages from |
+| `src/i18n/` | UI strings of the custom pages (`en.json`), the `t()` / `rich()` helpers, the list of languages |
+| `src/styles/` | `tokens.css` (the web client's design tokens), `global.css` (pages), `starlight.css` (docs) |
+| `src/assets/screenshots/` | The screenshots and `manifest.ts` (scene key → image, alt text, caption) |
+| `public/` | Favicons, app icons, `og.png` (rendered by `just og-image` from `scripts/og/template.html` and `src/assets/brand/og-background.png`), `site.webmanifest`, `robots.txt` |
+| `src/assets/brand/` | Logo and wordmark, the Open Graph background and the hero background (two generated abstract images, CC-BY-4.0 like the texts) |
+| `deploy/` | `Dockerfile`, `Caddyfile`, `entrypoint.sh`, `docker-compose.yml`, `.env.example`, [deployment notes](deploy/README.md) |
+| `e2e/` | Playwright: every route, axe scans, keyboard, CSP, privacy |
+| `tests/` | Vitest checks of the built site (JavaScript budget, CSP hashes, no foreign URLs) |
+| `scripts/` | CSP hashes, SPDX and license checks, the publication check, the docs sync (`sync-docs.mjs`, `docs-sources.mjs`, `gen-env-reference.mjs`, `lib/`), the release fetcher (`fetch-releases.mjs`) |
+
+## Running it
+
+Requirements: Node.js 24, pnpm (the version in `package.json`, `corepack enable` provides it), [just](https://just.systems),
+Docker for the image and the Caddyfile check.
+
+```sh
+git submodule update --init   # the docs sources under sources/ (a fresh clone has empty directories)
+pnpm install
+just dev          # http://localhost:4321, hot reload
+just build        # dist/ and csp-script-hashes.txt
+just preview      # serves dist/ on http://127.0.0.1:4400
+just check        # everything below, must be green before a commit
+```
+
+`just check` runs `astro check`, the build, Vitest (unit tests, the checks of `dist/` and its link checker), the SPDX and license
+checks, `scripts/publish-check.sh`, `caddy validate` on `deploy/Caddyfile` and the Playwright suite. Playwright runs
+only Chromium and the Android phone emulation with two workers:
+
+```sh
+just e2e          # = playwright test -c e2e/playwright.config.ts --project chromium --project mobile-android --workers=2
+```
+
+The suite serves `dist/` with `astro preview` on port 4400 (`E2E_PORT` changes it), so build first. It needs the
+Chromium of Playwright 1.63 (`pnpm exec playwright install chromium` if it is not cached).
+
+## The wiki and its sources
+
+The wiki has three groups: **Users** (written here, in `src/content/docs/users/`), **Node admins** and
+**Developers**. The pages of the last two are not kept in this repository: they are copied at build time from the
+repositories where they are versioned with the code, so they always match it.
+
+| Submodule | What the wiki takes from it |
+|---|---|
+| `sources/tavrn` | `docs/self-hosting.md` (admin overview), `docs/architecture.md`, `docs/roadmap.md` (also `/roadmap`) |
+| `sources/tavrn-node` | `docs/HANDBOOK.md`, split into one page per section, and `deploy/.env.example` (the configuration reference) |
+| `sources/tavrn-protocol` | The specification: `README.md`, `PROTOCOL.md`, `FEDERATION.md`, `ENCRYPTION.md` and the other documents |
+| `sources/tavrn-js` | The READMEs of `sdk/`, `e2ee/` and `bot/` |
+| `sources/tavrn-web` | `docs/CLIENT.md`, `docs/DESKTOP.md`, `docs/ACCESSIBILITY.md` |
+
+`scripts/sync-docs.mjs` does the copying (the list is `scripts/docs-sources.mjs`). It runs before every `pnpm dev`,
+`pnpm build` and `pnpm typecheck`, and alone as `just sync-docs`. It writes `src/content/docs/synced/` and
+`src/content/pages/roadmap.md` (both gitignored) and
+
+- adds the Starlight frontmatter: the title from the first H1 (removed from the body), a description from the first
+  paragraph (or the one configured), an edit link to the file in its **source** repository and the sidebar order;
+- rewrites links: between synced files to site routes (also into the middle of the split handbook), to other files
+  of the source repositories to GitHub; badges and GitHub-only blocks are dropped, GitHub alerts (`> [!NOTE]`) become
+  asides, headings start at H2, every code block gets a language, task lists become plain lists;
+- generates the configuration reference (`scripts/gen-env-reference.mjs`): one table per section of the node's
+  `.env.example`, an anchor per variable (`/docs/admins/configuration-reference/#TAVRN_DOMAIN`);
+- fails with a list of the missing files when a configured source is not there.
+
+**Diagrams.** ```` ```mermaid ```` blocks, synced or hand-written, become diagrams (`src/lib/mermaid.mjs`): the
+page carries the source, and on pages that have a diagram a small loader imports Mermaid (bundled, lazy, no
+requests elsewhere) and draws it in the site's colours (`src/lib/mermaid-render.ts`). Without JavaScript the
+source shows like code; the source also stays in a "Diagram source" disclosure under every drawing.
+
+A generated page names its source and license at the bottom. To change such a page, change the source repository.
+To add a document, add it to `scripts/docs-sources.mjs`; the sidebar groups pick it up by directory
+(`src/docs-sidebar.ts`).
+
+**Updating the sources.** The submodules are pinned to a commit and track `main` until the first release tags:
+
+```sh
+just update-sources                  # = git submodule update --init --remote --merge sources/
+just sync-docs && just build         # check the result (warnings name anchors or sections that moved)
+git add sources && git commit -m "Update the docs sources"
+```
+
+Once the repositories publish release tags, pin each submodule to the tag of the release train instead
+(`git -C sources/tavrn-node checkout v0.1.0 && git add sources/tavrn-node`). While the repositories are private,
+fetching them needs a GitHub token with read access; the CI and image workflows still check out without
+submodules and have to be switched to `submodules: true` with such a token before they can build the wiki.
+
+## Screenshots
+
+The screenshots in `src/assets/screenshots/` come from a reproducible pipeline in [`shots/`](shots/README.md): a
+Playwright script drives the web client against a fresh local demo node with fictitious accounts. `shots/run.sh`
+makes a new set; `node shots/import.mjs <out>` copies it into the site and regenerates
+`src/assets/screenshots/manifest.ts` (scene key, alt text, caption) from the run's `manifest.json`. Pages use the
+scene keys only; Astro makes the WebP variants and widths at build time.
+
+## Downloads and status
+
+**Download page.** `src/data/downloads.json` is the release data of the page: the installers of the latest
+`tavrn-web` release and the image tag of the latest `tavrn-node` release. `src/lib/releases.ts` classifies the release
+assets by format (NSIS `.exe` and `.msi`, AppImage, `.deb`, `.dmg`, `.app.tar.gz`, `.apk`), architecture (from the
+file name; an AppImage without one is x64, as electron-builder names it) and desktop shell, and attaches the SHA-256
+(from `<file>.sha256`, `SHA256SUMS` or GitHub's asset digest) and the Tauri updater `.sig`. The update feeds
+(`latest.json`, `latest.yml`, `latest-linux.yml`) and anything else are not downloads.
+
+The shells follow tavrn-web's `docs/DESKTOP.md`: **Linux** is the Electron app (electron-builder:
+`Tavrn-<version>.AppImage` and `tavrn_<version>_amd64.deb`, no `.rpm`); **Windows** is the Tauri app
+(`Tavrn_<version>_x64-setup.exe`, `.msi`) with an optional **Electron build for Windows** for computers where WebView2 makes trouble, shown on the Windows card as a
+small secondary "Alternative build" disclosure. The classifier tells the two Windows builds apart by name only, so
+**the Electron Windows artifact must contain `electron` in its file name**, for example
+`tavrn-electron_<version>_x64-setup.exe` (electron-builder's default `Tavrn Setup <version>.exe` would be ignored).
+Every Linux package counts as Electron, every other file without `electron` in its name as Tauri.
+
+**Checking a download.** Below the cards, a verifier (`src/components/download/Verifier.astro`, plain JavaScript,
+pure helpers in `src/lib/verify.ts`) checks a chosen or dropped file on the visitor's device: SHA-256 with
+`crypto.subtle`, and SHA-512 when the release lists electron-updater values (`latest*.yml`, read by the fetcher into
+each asset's `sha512`). It compares the result with the checksums embedded at build time and with an optional pasted
+value (hex or base64, whitespace tolerated). Nothing is uploaded, it works offline, files above 1 GB are refused with
+a pointer to the command line check. The example checksums in the committed `downloads.json` are the hashes of the
+test fixtures `e2e/fixtures/example-installer.bin` (SHA-256 of `Tavrn_0.2.0_x64-setup.exe`) and
+`e2e/fixtures/example-appimage.bin` (SHA-512 of `Tavrn-0.2.0.AppImage`), so `e2e/verify.spec.ts` covers the match.
+
+`just fetch-releases` (also the first step of `pnpm build`) refreshes the data from the GitHub API (`GITHUB_TOKEN`
+optional; `FETCH_RELEASES=0` skips it). It never fails the build: without network, without a release or while the
+repositories are private, the committed file stays. The committed file is example data (`"example": true`): the
+page then shows disabled buttons and says that there is no public release yet. A small script moves the card of the
+visitor's operating system to the front (`src/lib/os.ts`, from the user agent and client hints only; without
+JavaScript the order is fixed). A release of `tavrn-web` rebuilds the site through a `repository_dispatch`;
+[docs/RELEASE-DISPATCH.md](docs/RELEASE-DISPATCH.md) has the step for its release workflow.
+
+**Status page and the live dot.** The status page is a Preact island (`client:load`, only on `/status`, under 60 KB
+of JavaScript gzipped with the runtime): it reads `/config.json`, then asks the node for `/healthz`, `/readyz` and
+`/api/v1/node` on load, every 60 seconds and on "Refresh now" (8-second timeouts), and shows Operational, Degraded or
+Unreachable with the reasons. With `UPTIME_KUMA_URL` and `UPTIME_KUMA_PAGE` set it adds the uptime history (24-hour
+uptime, the last 90 checks, active incidents) from Uptime Kuma's public status-page API, which the container forwards
+as `/uptime/api/status-page/…` (`src/lib/kuma.ts` describes the shapes). The "Status" link of the header, the mobile
+menu and the docs header carries a live dot (`src/components/status/StatusDot.astro`, plain JavaScript): one
+`/healthz` request per page view when the browser is idle, the state as visually hidden text ("Status: online"), and
+an invisible dot of reserved width while the state is unknown or without JavaScript, so nothing shifts.
+The end-to-end tests mock `/config.json`, the node and Kuma (`e2e/mocks.ts`), so they never leave the machine.
+
+## Known issues and reporting
+
+**Known issues (`/issues`).** A Preact island (`client:load`, under 60 KB of JavaScript gzipped like the status page)
+lists the open issues of the organization's repositories: search (title, labels, repository, number), filter chips
+for repositories and labels, grouped by repository or ordered by the last update, with a "Search on GitHub" link
+that carries the search text. The browser never contacts GitHub: it reads `/gh/issues` from this site, and the
+container forwards exactly that one request to GitHub's issue search (`org:<GITHUB_ORG> is:issue is:open`, the 100
+most recently updated) with a read-only token (`GITHUB_READ_TOKEN`), without any header or query parameter of the
+visitor, and answers with the JSON body only, cacheable for five minutes (`deploy/Caddyfile`; `just gh-proxy-test`
+checks it in Docker against a fake GitHub). Without a token `/gh/issues` is 404 and the page links to GitHub
+instead. `src/lib/issues.ts` is the model (parsing, grouping, filtering, relative dates); the end-to-end tests mock
+`/gh/issues` with `e2e/fixtures/gh-issues.json`.
+
+**Report a problem (`/report`).** A static page: a short checklist (known issues first, latest version, one problem
+per report, nothing private, reports are public, a GitHub account is needed), one button to the umbrella
+repository's issue chooser (`https://github.com/<org>/tavrn/issues/new/choose`, which asks what the problem is
+about and opens the form of the right repository), where to find the version and the logs, and a separate card for
+security problems that points to private vulnerability reporting per repository (the organization's
+`SECURITY.md`), never to a public issue.
+
+## Configuration
+
+Two groups of values: those written into the pages at **build time**, and those the container reads at **runtime**.
+
+### Build time (`astro:env`, public)
+
+Set them as environment variables for `pnpm build`, or as `--build-arg` of the image. For local image builds put
+them into `.build-args` (one `NAME=value` per line, gitignored; template `build-args.example`): `just docker-build`
+passes every line as a build argument. In CI they come from repository variables of the same names. The build
+prints a warning when the imprint placeholders are still in place.
+
+| Variable | Default | Used for |
+|---|---|---|
+| `PUBLIC_SITE_URL` | `https://tavrn.org` | Canonical URLs, Open Graph, sitemap |
+| `PUBLIC_CONTACT_EMAIL` | `hello@tavrn.org` | Imprint and privacy policy |
+| `PUBLIC_IMPRINT_NAME` | `Name of the provider` | Provider in the imprint and GDPR controller (personal data: set at build time, never committed) |
+| `PUBLIC_IMPRINT_STREET` | `Street and number` | Provider's street |
+| `PUBLIC_IMPRINT_CITY` | `Postal code and city` | Provider's postal code and city |
+| `PUBLIC_IMPRINT_COUNTRY` | `Germany` | Provider's country |
+| `PUBLIC_GITHUB_ORG` | `just-tavrn` | Links to GitHub (repositories, discussions, security policy) |
+| `PUBLIC_NODE_URL` | `https://app.tavrn.org` | The official node as named in the privacy policy |
+
+### Runtime (container environment)
+
+| Variable | Default | Used for |
+|---|---|---|
+| `TAVRN_APP_URL` | `https://tavrn.swsp.eu` | `/app` ("Open the web app") redirects here |
+| `TAVRN_NODE_URL` | `https://tavrn.swsp.eu` | The node the status page (`/healthz`, `/readyz`, `/api/v1/node`) and the live dot of the "Status" link (`/healthz`) ask from the visitor's browser; allowed in the CSP's `connect-src` |
+| `TAVRN_NODE_WS_URL` | derived from `TAVRN_NODE_URL` | WebSocket endpoint in the delegation document |
+| `TAVRN_NODE_DOMAIN` | `tavrn.org` | Identity domain in the delegation document |
+| `TAVRN_WELLKNOWN` | `off` | `/.well-known/tavrn`: `off` (404), `on` (static document from these variables), `proxy` (the node's own document) |
+| `UPTIME_KUMA_URL` | empty | Uptime Kuma base URL as the container reaches it (for example `http://uptime-kuma:3001`); the container proxies the status page's two API endpoints as `/uptime/api/status-page/…`, because Kuma sends no CORS headers |
+| `UPTIME_KUMA_PAGE` | empty | Slug of Uptime Kuma's public status page |
+| `GITHUB_READ_TOKEN` | empty | Optional read-only GitHub token (Issues: read-only) for the known-issues page: the container forwards `GET /gh/issues` to GitHub's issue search with it, without anything from the visitor; empty: `/gh/issues` is 404 and the page links to GitHub |
+| `GITHUB_ORG` | `just-tavrn` | The organization whose open issues `/gh/issues` returns (keep it equal to `PUBLIC_GITHUB_ORG`) |
+
+The defaults point at the current test node until the official node moves to its own host. The container serves
+these values as `GET /config.json` (`appUrl`, `nodeUrl`, `nodeDomain`, `uptimeKumaUrl`, `uptimeKumaPage`), so the
+status page and the live dot read them at runtime. Each variable is explained in
+[`deploy/.env.example`](deploy/.env.example).
+
+## The container image
+
+```sh
+just docker-build                       # docker build -f deploy/Dockerfile -t tavrn-website:dev .
+docker run --rm -p 18080:8080 -e TAVRN_WELLKNOWN=on tavrn-website:dev
+```
+
+The image is `caddy:2-alpine` with the build at `/srv`, running unprivileged on port 8080 (TLS ends at the reverse
+proxy). Caddy sets the security headers (a strict Content-Security-Policy with `script-src 'self'` plus the hashes
+of the few inline scripts Starlight renders, HSTS, `Referrer-Policy: no-referrer`, …), caches `/_astro/` for a year
+and HTML never, serves the custom 404 page, and logs requests **without** IP addresses or user agents.
+[`deploy/README.md`](deploy/README.md) describes the Portainer stack, Nginx Proxy Manager and Cloudflare.
+
+## Adding a language
+
+English lives at the root, every other language under `/<code>/` (for German: `/de/`).
+
+1. Add the code to `localeCodes` (and its name to `localeLabels`) in `src/i18n/locales.ts`; Astro's i18n routing
+   and Starlight both take the list from there.
+2. Copy `src/i18n/en.json` to `src/i18n/de.json`, translate the values (keep the keys and the `{placeholders}`;
+   `{brand}` stays as it is), and register it in `MESSAGES` in `src/i18n/index.ts`. The unit test fails until both
+   files have the same keys.
+3. Put the translated docs under `src/content/docs/de/` with the same file names (untranslated pages fall back to
+   English, marked as such) and, optionally, Starlight's own UI strings in `src/content/i18n/de.json`.
+4. Add the pages under `src/pages/de/` (they reuse the components; `Astro.currentLocale` selects the strings). The
+   legal pages are written per language.
+
+`hreflang` links, `<html lang>` and the language-aware links (`localePath()`) follow automatically.
+
+## Rules for the content
+
+- Plain English for ordinary users; the product name is always lowercase "tavrn". In UI strings it is written as
+  `{brand}` and rendered with `translate="no"`; in Markdown a rehype plugin does the same.
+- Honest claims only (what the project's README and FAQ say); no comparisons with other products by name.
+- No external requests except the status check: no CDNs, fonts, analytics or embeds. The only connection to another
+  origin is the visitor's browser asking the official node (`TAVRN_NODE_URL`) for its health, from the live dot of
+  the "Status" link and the status page; the privacy policy says so. The known-issues list comes from GitHub through
+  this site's own server (`/gh/issues`), not from the browser. No cookies and no browser storage. The tests enforce all of it.
+- WCAG 2.2 AA: visible focus, 44 px targets on touch, contrast from the tokens only, headings in order, alt texts,
+  reduced motion respected, everything works with the keyboard.
+- The landing page stays under 50 KB of JavaScript (gzipped), without an island framework; the status and known-issues
+  pages, the only pages with Preact, stay under 60 KB each. `tests/dist.test.ts` measures them.
+
+## License and trademark
+
+The code is licensed under [Apache-2.0](LICENSE-APACHE), the texts and screenshots under
+[CC-BY-4.0](LICENSE-CC-BY-4.0); [LICENSE.md](LICENSE.md) has the details and the attribution we ask for. The name
+"tavrn", the logo and the icons are not covered by these licenses; see the [trademark policy](TRADEMARK.md).
+Contributions are accepted under the [contributor license agreement](CLA.md).

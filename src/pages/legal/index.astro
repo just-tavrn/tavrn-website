@@ -1,0 +1,44 @@
+---
+// SPDX-License-Identifier: Apache-2.0
+import { PUBLIC_GITHUB_ORG } from "astro:env/client";
+import Site from "../../layouts/Site.astro";
+import { localePath, rich, t } from "../../i18n";
+
+const locale = Astro.currentLocale;
+const items = [
+  { href: localePath(locale, "/legal/imprint"), title: t(locale, "legal.imprint"), text: rich(locale, "legal.imprint_text") },
+  { href: localePath(locale, "/legal/privacy"), title: t(locale, "legal.privacy"), text: rich(locale, "legal.privacy_text") },
+  {
+    href: `https://github.com/${PUBLIC_GITHUB_ORG}/tavrn/blob/main/TRADEMARK.md`,
+    title: t(locale, "legal.trademark"),
+    text: rich(locale, "legal.trademark_text"),
+    external: true,
+  },
+];
+---
+
+<Site title={t(locale, "legal.title")} description={t(locale, "legal.lead")}>
+  <section class="container-site py-16 md:py-20">
+    <h1 class="text-4xl font-bold tracking-tight text-fg-0">{t(locale, "legal.title")}</h1>
+    <p class="mt-4 max-w-2xl text-lg text-fg-1" set:html={rich(locale, "legal.lead")} />
+    <ul class="mt-10 grid gap-4 md:grid-cols-3">
+      {
+        items.map((item) => (
+          <li>
+            <a
+              href={item.href}
+              rel={item.external ? "noopener" : undefined}
+              class="block h-full rounded-xl border border-line bg-bg-1 p-6 no-underline hover:border-line-strong hover:bg-bg-2"
+            >
+              <span class="text-lg font-semibold text-fg-0">
+                {item.title}
+                {item.external && <span class="sr-only"> {t(locale, "common.external")}</span>}
+              </span>
+              <span class="mt-2 block text-fg-1" set:html={item.text} />
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </section>
+</Site>

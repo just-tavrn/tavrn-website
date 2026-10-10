@@ -1,0 +1,66 @@
+---
+// SPDX-License-Identifier: Apache-2.0
+// The live dot of the "Status" link in the site header, the mobile menu and the docs header. Wraps the link's label:
+// a dot before it, the state as visually hidden text right after it, so the link's name reads "Status: online". Plain JavaScript, no island
+// framework: when the browser is idle it reads /config.json and asks the node's /healthz once, without polling.
+// The dot's width is always reserved and it stays invisible while the state is unknown, on any configuration failure
+// and without JavaScript, so nothing shifts.
+import { t } from "../../i18n";
+
+const locale = Astro.currentLocale;
+---
+
+<span class="status-dot" data-status-dot aria-hidden="true"></span><span
+  ><slot /><span
+    class="status-state"
+    data-status-state
+    data-online={t(locale, "status.dot_online")}
+    data-offline={t(locale, "status.dot_offline")}></span></span
+>
+
+<style>
+  .status-dot {
+    display: inline-block;
+    flex: none;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 999px;
+    background: transparent;
+  }
+  .status-dot[data-state="online"] {
+    background: var(--color-ok, #45b980);
+  }
+  .status-dot[data-state="offline"] {
+    background: var(--color-danger, #e87a76);
+  }
+  /* Visually hidden, but inline in the label's own span: a block-level (absolutely positioned or flex) child would
+     make browsers insert a space into the link's name ("Status : online"). */
+  .status-state {
+    font-size: 0;
+    white-space: nowrap;
+    clip-path: inset(50%);
+  }
+</style>
+
+<script>
+  // One check per page view, when the browser is idle: /config.json, then the node's /healthz (8-second timeout).
+  // Nothing is stored.
+  import { fetchJson, parseHealth, parseRuntimeConfig } from "../../lib/node-status";
+
+  async function check(): Promise<void> {
+    const dots = document.querySelectorAll<HTMLElement>("[data-status-dot]");
+    if (dots.length === 0) return;
+    const cfg = await fetchJson("/config.json");
+    const config = cfg.ok ? parseRuntimeConfig(cfg.data) : null;
+    if (!config) return; // no configuration (development, preview): stay invisible
+    const health = await fetchJson(`${config.nodeUrl}/healthz`);
+    const state = health.ok && parseHealth(health.data) !== null ? "online" : "offline";
+    for (const dot of dots) dot.dataset.state = state;
+    for (const text of document.querySelectorAll<HTMLElement>("[data-status-state]")) {
+      text.textContent = `: ${text.dataset[state] ?? state}`;
+    }
+  }
+
+  if ("requestIdleCallback" in window) requestIdleCallback(() => void check(), { timeout: 3000 });
+  else setTimeout(() => void check(), 200);
+</script>

@@ -1,0 +1,181 @@
+---
+// SPDX-License-Identifier: Apache-2.0
+// The download page: the desktop installers of the latest tavrn-web release (src/data/downloads.json, written by
+// scripts/fetch-releases.mjs), the web app, and the container image for self-hosters. A small script moves the
+// card of the visitor's operating system to the front; without JavaScript every card is there in a fixed order.
+import { PUBLIC_GITHUB_ORG } from "astro:env/client";
+import ExternalLink from "@lucide/astro/icons/external-link";
+import Globe from "@lucide/astro/icons/globe";
+import Info from "@lucide/astro/icons/info";
+import Laptop from "@lucide/astro/icons/laptop";
+import Monitor from "@lucide/astro/icons/monitor";
+import Server from "@lucide/astro/icons/server";
+import Smartphone from "@lucide/astro/icons/smartphone";
+import SquareTerminal from "@lucide/astro/icons/square-terminal";
+import OsCard from "../components/download/OsCard.astro";
+import Verifier from "../components/download/Verifier.astro";
+import data from "../data/downloads.json";
+import Site from "../layouts/Site.astro";
+import { localePath, rich, t } from "../i18n";
+import { parseDownloads } from "../lib/releases";
+
+const locale = Astro.currentLocale;
+const downloads = parseDownloads(data);
+const example = downloads.example === true;
+const { web, node } = downloads;
+const of = (...oses: string[]) => web.assets.filter((a) => oses.includes(a.os));
+const released =
+  !example && web.publishedAt
+    ? new Intl.DateTimeFormat(locale ?? "en", { dateStyle: "long", timeZone: "UTC" }).format(new Date(web.publishedAt))
+    : null;
+const releases = `https://github.com/${PUBLIC_GITHUB_ORG}/tavrn-web/releases`;
+---
+
+<Site title={t(locale, "download.title")} description={t(locale, "download.lead")}>
+  <section class="container-site pt-16 pb-8 md:pt-24">
+    <h1 class="text-4xl font-bold tracking-tight text-fg-0 md:text-5xl">{t(locale, "download.title")}</h1>
+    <p class="mt-4 max-w-2xl text-lg text-fg-1" set:html={rich(locale, "download.lead")} />
+    {
+      !example && (
+        <p class="mt-3 text-fg-2">
+          {t(locale, "download.version", { version: web.version })}
+          {released && (
+            <>
+              {" · "}
+              <time datetime={web.publishedAt}>{t(locale, "download.released", { date: released })}</time>
+            </>
+          )}
+        </p>
+      )
+    }
+    {
+      example && (
+        <div class="example-note mt-6" role="note">
+          <Info class="mt-0.5 h-5 w-5 shrink-0 text-accent" aria-hidden="true" />
+          <div>
+            <p class="font-semibold text-fg-0">{t(locale, "download.example_title")}</p>
+            <p class="mt-1 text-fg-1" set:html={rich(locale, "download.example_text")} />
+          </div>
+        </div>
+      )
+    }
+  </section>
+
+  <section class="container-site pb-12" aria-labelledby="apps-title">
+    <h2 id="apps-title" class="sr-only">{t(locale, "download.apps_title")}</h2>
+    <ul class="grid items-start gap-4 md:grid-cols-2" data-os-cards>
+      <OsCard card="windows" assets={of("windows")} example={example}><Monitor slot="icon" class="h-5 w-5" /></OsCard>
+      <OsCard card="linux" assets={of("linux")} example={example}><SquareTerminal slot="icon" class="h-5 w-5" /></OsCard>
+      <OsCard card="macos" assets={of("macos")} example={example}><Laptop slot="icon" class="h-5 w-5" /></OsCard>
+      <OsCard card="mobile" assets={of("android", "ios")} example={example}><Smartphone slot="icon" class="h-5 w-5" /></OsCard>
+    </ul>
+    {
+      !example && (
+        <p class="mt-6 flex flex-wrap gap-x-6 gap-y-2">
+          <a href={web.notes_url} class="link inline-flex min-h-11 items-center gap-1.5" rel="noopener">
+            {t(locale, "download.notes", { version: web.version })}
+            <ExternalLink class="h-3.5 w-3.5" aria-hidden="true" />
+            <span class="sr-only">{t(locale, "common.external")}</span>
+          </a>
+          <a href={releases} class="link inline-flex min-h-11 items-center gap-1.5" rel="noopener">
+            {t(locale, "download.all_releases")}
+            <ExternalLink class="h-3.5 w-3.5" aria-hidden="true" />
+            <span class="sr-only">{t(locale, "common.external")}</span>
+          </a>
+        </p>
+      )
+    }
+  </section>
+
+  <Verifier assets={web.assets} />
+
+  <section class="container-site pb-20 md:pb-28">
+    <div class="grid gap-4 md:grid-cols-2">
+      <div class="side-card" data-web-card>
+        <div class="flex items-center gap-3">
+          <span class="side-icon" aria-hidden="true"><Globe class="h-5 w-5" /></span>
+          <h2 class="text-xl font-semibold text-fg-0">{t(locale, "download.web.title")}</h2>
+        </div>
+        <p class="mt-3 text-fg-1">{t(locale, "download.web.text")}</p>
+        <p class="mt-2 text-fg-1">{t(locale, "download.web.any_node")}</p>
+        <p class="mt-auto pt-5"><a href="/app" class="btn btn-primary">{t(locale, "download.web.cta")}</a></p>
+      </div>
+      <div class="side-card" data-selfhost-card>
+        <div class="flex items-center gap-3">
+          <span class="side-icon" aria-hidden="true"><Server class="h-5 w-5" /></span>
+          <h2 class="text-xl font-semibold text-fg-0">{t(locale, "download.selfhost.title")}</h2>
+        </div>
+        <p class="mt-3 text-fg-1">{t(locale, "download.selfhost.text")}</p>
+        <p class="mt-4 text-sm font-medium text-fg-2" id="image-label">{t(locale, "download.selfhost.image_label")}</p>
+        <pre class="image mt-1.5"><code translate="no">{node.image}</code></pre>
+        <p class="mt-auto pt-5">
+          <a href={localePath(locale, "/docs/admins/install/")} class="btn btn-secondary">{t(locale, "download.selfhost.cta")}</a>
+        </p>
+      </div>
+    </div>
+  </section>
+</Site>
+
+<style>
+  .example-note {
+    display: flex;
+    gap: 0.75rem;
+    max-width: 46rem;
+    border: 1px solid var(--color-line);
+    border-left: 3px solid var(--color-accent);
+    border-radius: var(--radius-md);
+    background: var(--color-bg-1);
+    padding: 0.875rem 1rem;
+  }
+  .side-card {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--color-line);
+    border-radius: 0.75rem;
+    background: var(--color-bg-1);
+    padding: 1.25rem;
+  }
+  @media (min-width: 48rem) {
+    .side-card {
+      padding: 1.5rem;
+    }
+  }
+  .side-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: var(--radius-md);
+    background: var(--color-bg-3);
+    color: var(--color-accent);
+  }
+  .image {
+    overflow-x: auto;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-md);
+    background: var(--color-bg-0);
+    padding: 0.625rem 0.75rem;
+    font-size: 0.875rem;
+    color: var(--color-fg-0);
+  }
+</style>
+
+<script>
+  // Moves the card of the visitor's operating system to the front and marks it. Reads only what every browser
+  // exposes anyway (src/lib/os.ts); nothing is stored or sent.
+  import { detectOs } from "../lib/os";
+
+  const list = document.querySelector<HTMLElement>("[data-os-cards]");
+  if (list) {
+    const nav = navigator as Navigator & { userAgentData?: { platform?: string } };
+    const os = detectOs({ uaPlatform: nav.userAgentData?.platform, platform: nav.platform, userAgent: nav.userAgent });
+    const key = os === "android" || os === "ios" ? "mobile" : os;
+    const card = key ? list.querySelector<HTMLElement>(`[data-os-card="${key}"]`) : null;
+    if (card) {
+      list.prepend(card);
+      card.dataset.recommended = "true";
+      card.querySelector("[data-recommended-badge]")?.removeAttribute("hidden");
+    }
+  }
+</script>

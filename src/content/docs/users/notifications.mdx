@@ -1,0 +1,53 @@
+---
+title: Notifications
+description: Notification levels for rooms and channels, muting, desktop and push notifications, and what mentions reveal.
+sidebar:
+  order: 9
+---
+
+import Screenshot from "../../../components/docs/Screenshot.astro";
+
+tavrn tells you about mentions and direct messages with a short message on screen, a soft sound and an entry under
+the bell next to your settings. Your settings are saved on your home node and apply on all your devices.
+
+## How much you hear from rooms
+
+Under **Settings → Notifications → Rooms notify me about** you choose **All messages**, **Only mentions** or
+**Nothing**. Direct messages always notify you, unless you choose nothing for them.
+
+Every room, channel and conversation can override this in its menu: pick a level, or mute it for 1 hour, 8 hours,
+24 hours or until you turn it back on. The settings page lists every room and channel with its own setting.
+
+<Screenshot scene="menu-notifications-desktop" />
+
+## Mentions
+
+You are mentioned when someone writes `@yourname`, a role you have, or `@everyone`. Mentions show a red count on
+the room and always notify you, even when a room is set to mentions only.
+
+:::note
+Who is mentioned travels next to a message without encryption, also in encrypted channels, because the node needs
+it to count mentions and send notifications. The text of the message stays encrypted.
+:::
+
+## Desktop notifications
+
+Turn on **Desktop notifications when tavrn is in the background**. Your browser asks for permission once. The
+text of encrypted messages never appears in a notification. The desktop app shows system notifications instead,
+also for incoming calls, while its window is not in front.
+
+<Screenshot scene="settings-notifications-desktop" />
+
+## Push notifications
+
+Push notifications reach you while tavrn is closed. Turn them on under **Settings → Notifications → Push
+notifications** in each browser or installed app separately, and send a test push to check that they arrive. They
+only arrive while no tavrn tab is open on that device.
+
+- Pushes for encrypted conversations only name the conversation and the sender. For unencrypted channels you can
+  choose to see the beginning of the message.
+- On iPhone and iPad, add tavrn to the home screen first (Share, then Add to Home Screen) and open it from there.
+- Rooms on other nodes push only for mentions, direct messages and calls.
+
+If nothing arrives, check that notifications are allowed for the site in your browser settings, and that your
+home node offers push notifications at all.

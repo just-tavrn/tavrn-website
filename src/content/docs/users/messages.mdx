@@ -1,0 +1,80 @@
+---
+title: Messages
+description: Formatting, replies, reactions, emojis, mentions, pins, threads, spoilers, attachments and slash commands.
+sidebar:
+  order: 4
+---
+
+import Screenshot from "../../../components/docs/Screenshot.astro";
+
+Write in the box at the bottom of a channel and press Enter to send. Most actions on a message are in its menu:
+right-click it, use the **⋯** button, or press and hold on a phone.
+
+<Screenshot scene="chat-desktop" />
+
+<Screenshot scene="menu-message-desktop" />
+
+## Formatting
+
+Messages understand Markdown: `**bold**`, `*italic*`, `` `code` ``, quotes starting with `>`, lists and links.
+Code blocks between three backticks get a copy button. To hide a spoiler, write `||like this||` or select the text
+and press Ctrl+Shift+S; readers reveal it with a click. Attachments can be marked as spoilers too.
+
+## Replies, reactions and emojis
+
+- **Reply** quotes the message you answer.
+- **React** opens the emoji picker with quick reactions, recently used emojis, the room's own emojis and your
+  personal emojis. Custom emojis can also be written as `:name:`.
+- **Edit** and **Delete** work on your own messages; edited messages are marked "(edited)".
+
+<Screenshot scene="emoji-picker-desktop" />
+
+Mention people with `@name` (or `@name@domain` for someone on another node), a whole role with `@Role`, or
+everyone with `@everyone` where you may. Mentions notify the people you name.
+
+## Pins and threads
+
+Moderators **pin** important messages; the channel header lists them under **Pinned messages**.
+
+A **thread** is a side conversation about one message. Choose **Create thread** or **Reply in thread** in the
+message's menu. The thread opens next to the channel (full screen on a phone), and the thread button in the
+channel header lists the active and archived threads. Writing in a thread follows it, so you are notified about
+new replies there.
+
+<Screenshot scene="threads-desktop" />
+
+## Attachments
+
+Drag files into the channel or use the attach button. Your node sets the largest size and the allowed file types.
+Before an image is uploaded, tavrn removes hidden information such as the place where a photo was taken. Images
+from strangers wait behind a **Load** button, depending on your setting under **Settings → Privacy & safety → Image
+previews**. If the node offers it, the composer also has a GIF search.
+
+In encrypted channels, attachments are encrypted on your device like the messages themselves. Images open in a
+viewer with zoom and a download button.
+
+<Screenshot scene="media-viewer-desktop" />
+
+## Slash commands
+
+Type `/` at the start of a message to open the command list; `/help` shows every command you can use where you
+are. A few examples:
+
+| Command | What it does |
+|---|---|
+| `/me` | Sends an action in the third person |
+| `/shrug` | Appends a shrugging emoticon to your message |
+| `/nick` | Sets your nickname in this room |
+| `/whiteboard` | Opens the shared whiteboard of the conversation |
+| `/timeout`, `/kick`, `/ban` | Moderation commands, for members with the permission |
+
+Bots add their own commands, which appear in the same list.
+
+<Screenshot scene="composer-commands-desktop" />
+
+## The whiteboard
+
+Every channel and conversation has a shared whiteboard for sketching together, encrypted like the messages. Open
+it with `/whiteboard`.
+
+<Screenshot scene="whiteboard-desktop" />

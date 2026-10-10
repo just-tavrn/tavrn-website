@@ -1,0 +1,15 @@
+---
+// SPDX-License-Identifier: Apache-2.0
+// Starlight's Markdown content, plus the loader of the diagrams: on a page with a Mermaid diagram
+// (src/lib/mermaid.mjs) it imports the renderer, a separate chunk with Mermaid, and draws them. Other pages load
+// only these few lines.
+import Default from "@astrojs/starlight/components/MarkdownContent.astro";
+---
+
+<Default><slot /></Default>
+
+<script>
+  if (document.querySelector(".mermaid-diagram")) {
+    void import("../../lib/mermaid-render").then((m) => m.renderDiagrams());
+  }
+</script>

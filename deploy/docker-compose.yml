@@ -1,0 +1,59 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# The tavrn website as a Portainer / Compose stack. Nginx Proxy Manager reaches the container on the shared Docker
+# network as website:8080 (no published port); Cloudflare sits in front of NPM (deploy/README.md).
+# Build-time values (contact e-mail, node URL in the page text) are baked into the image; see README.md.
+
+services:
+  website:
+    image: ghcr.io/just-tavrn/tavrn-website:latest
+    restart: unless-stopped
+    environment:
+      # Where /app ("Open the web app") redirects to.
+      TAVRN_APP_URL: ${TAVRN_APP_URL:-https://tavrn.swsp.eu}
+      # The official node, asked by the visitor's browser for the status page and the header pill (/healthz, …).
+      TAVRN_NODE_URL: ${TAVRN_NODE_URL:-https://tavrn.swsp.eu}
+      # WebSocket endpoint for the delegation document; empty = derived from TAVRN_NODE_URL.
+      TAVRN_NODE_WS_URL: ${TAVRN_NODE_WS_URL:-}
+      # Identity domain named in /.well-known/tavrn.
+      TAVRN_NODE_DOMAIN: ${TAVRN_NODE_DOMAIN:-tavrn.org}
+      # /.well-known/tavrn: off | on (static document) | proxy (the node's own document).
+      TAVRN_WELLKNOWN: ${TAVRN_WELLKNOWN:-off}
+      # Optional Uptime Kuma: base URL as this container reaches it (e.g. http://uptime-kuma:3001) and status page slug.
+      UPTIME_KUMA_URL: ${UPTIME_KUMA_URL:-}
+      UPTIME_KUMA_PAGE: ${UPTIME_KUMA_PAGE:-}
+      # Optional: a read-only GitHub token for the known-issues list (/issues); empty = the list says it is not
+      # available yet. GITHUB_ORG is the organization whose open issues it shows.
+      GITHUB_READ_TOKEN: ${GITHUB_READ_TOKEN:-}
+      GITHUB_ORG: ${GITHUB_ORG:-just-tavrn}
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    # The access log has no IP addresses or user agents; keep it small anyway.
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+    networks: [proxy]
+
+  # Optional: Uptime Kuma for the uptime history on the status page. Create a public status page in Kuma, then set
+  # UPTIME_KUMA_URL=http://uptime-kuma:3001 and UPTIME_KUMA_PAGE=<its slug> above; the website forwards the page's
+  # API itself, so Kuma needs no proxy host of its own (give it one in NPM only if its page should be public too).
+  # uptime-kuma:
+  #   image: louislam/uptime-kuma:2
+  #   restart: unless-stopped
+  #   volumes:
+  #     - uptime-kuma:/app/data
+  #   networks: [proxy]
+
+networks:
+  # The Docker network Nginx Proxy Manager is attached to (create it once, or use the name of the existing one).
+  proxy:
+    external: true
+
+# volumes:
+#   uptime-kuma:

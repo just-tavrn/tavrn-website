@@ -1,0 +1,70 @@
+---
+title: FAQ
+description: Short, honest answers to common questions about tavrn, its encryption, nodes, apps and licenses.
+sidebar:
+  order: 13
+---
+
+Honest answers, including the limits. If your question is missing, ask in the
+[Discussions](https://github.com/just-tavrn/tavrn/discussions) (category "Q&A").
+
+## How do nodes work together?
+
+Every room lives on exactly one node. People from other nodes connect to it directly, with a short-lived pass
+from their home node; the nodes only exchange signed notes such as invitations. The trade-off: when a node is
+offline, its rooms are offline until it returns, while your account and rooms on other nodes keep working.
+
+## Can the operator of a node read my messages?
+
+Not in encrypted conversations, which are the default: channels, direct messages, groups, attachments and calls.
+The operator does see some information about them, such as who is in which room and who writes when.
+[Privacy and encryption](/docs/users/privacy-and-encryption/) lists what exactly.
+
+## Is there a central server?
+
+No. There is no central service, directory or web app; every node serves the web app.
+
+## What happens if I lose my recovery key?
+
+A passkey that can unlock messages, or another device that is still signed in, gets you back in. Without any of
+them, you can still sign in with your password and second factor and reset your security key: you keep your
+account, friends, rooms and direct messages, but older encrypted messages can no longer be read, and your contacts
+see that your key changed. Nobody, not even the operator, can recover encrypted messages for you.
+
+## What if my home node shuts down?
+
+Today your account lives on its home node. Moving an account to another node, and backup nodes that stand in while
+the home node is down, are planned (see the [roadmap](/roadmap)). Until then, choose a node whose operator you trust
+to keep it running, or run your own.
+
+## How do bots work with encryption?
+
+A bot is a visible member of an encrypted channel, with a Bot badge, and reads only what it is allowed to see.
+Rooms can be declared no-bots zones. See [Bots and integrations](/docs/users/bots-and-integrations/).
+
+## Which apps are there?
+
+The web app, which works on phones, tablets and computers, and the desktop app for Windows and Linux. Apps for
+macOS, Android and iOS are planned.
+
+## Is tavrn accessible?
+
+The web app aims at WCAG 2.2 level AA: it works with the keyboard, announces new messages to screen readers and
+respects reduced motion. Please report anything that does not work for you; accessibility problems are bugs.
+
+## Is tavrn ready for daily use?
+
+Not yet. tavrn is before its first public release, and its encryption code has not been audited yet. It builds on
+well-known libraries instead of its own cryptography, but treat it as pre-release software for now.
+
+## May I host tavrn and call it tavrn?
+
+Yes, for yourself, your community, your company or your friends, with the unmodified name and logo. Distributing a
+modified version under the name, or running a hosting business under it, needs permission; see the
+[trademark policy](https://github.com/just-tavrn/.github/blob/main/TRADEMARK.md).
+
+## How can I help?
+
+Bug reports, translations and accessibility tests are welcome; see the
+[contributing page](/docs/developers/contributing/). To report a bug, check the [known issues](/issues) first, then
+follow [Report a problem](/report).

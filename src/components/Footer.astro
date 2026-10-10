@@ -1,0 +1,85 @@
+---
+// SPDX-License-Identifier: Apache-2.0
+// Site footer: every link of the header again (the no-JavaScript path on phones), the project's places on
+// GitHub, the legal pages and the license line.
+import { Image } from "astro:assets";
+import { PUBLIC_GITHUB_ORG } from "astro:env/client";
+import icon from "../assets/brand/icon-192.png";
+import { localePath, rich, t } from "../i18n";
+import Brand from "./Brand.astro";
+
+const locale = Astro.currentLocale;
+const gh = `https://github.com/${PUBLIC_GITHUB_ORG}`;
+type Link = { href: string; label: string; external?: boolean };
+const groups: { title: string; links: Link[] }[] = [
+  {
+    title: t(locale, "footer.product"),
+    links: [
+      { href: localePath(locale, "/") + "#features", label: t(locale, "nav.features") },
+      { href: localePath(locale, "/download"), label: t(locale, "nav.download") },
+      { href: "/app", label: t(locale, "footer.web_app") },
+      { href: localePath(locale, "/status"), label: t(locale, "nav.status") },
+    ],
+  },
+  {
+    title: t(locale, "footer.project"),
+    links: [
+      { href: localePath(locale, "/docs/"), label: t(locale, "nav.docs") },
+      { href: localePath(locale, "/roadmap"), label: t(locale, "footer.roadmap") },
+      { href: localePath(locale, "/issues"), label: t(locale, "issues.nav") },
+      { href: localePath(locale, "/report"), label: t(locale, "report.nav") },
+      { href: `${gh}/tavrn/discussions`, label: t(locale, "footer.discussions"), external: true },
+      { href: gh, label: t(locale, "nav.github"), external: true },
+      { href: `${gh}/.github/blob/main/SECURITY.md`, label: t(locale, "footer.security"), external: true },
+    ],
+  },
+  {
+    title: t(locale, "footer.legal"),
+    links: [
+      { href: localePath(locale, "/legal/imprint"), label: t(locale, "footer.imprint") },
+      { href: localePath(locale, "/legal/privacy"), label: t(locale, "footer.privacy") },
+      { href: `${gh}/tavrn/blob/main/TRADEMARK.md`, label: t(locale, "footer.trademark"), external: true },
+    ],
+  },
+];
+const licenseHtml = rich(locale, "footer.license", {
+  sourceHtml: `<a class="link" href="${gh}/tavrn-website" rel="noopener">${t(locale, "footer.source")}</a>`,
+});
+---
+
+<footer id="site-footer" class="mt-24 border-t border-line bg-bg-1">
+  <div class="container-site grid gap-10 py-12 md:grid-cols-[1.4fr_repeat(3,1fr)]">
+    <div>
+      <a href={localePath(locale, "/")} class="inline-flex min-h-11 items-center gap-2.5 text-fg-0 no-underline">
+        <Image src={icon} alt="" width={28} height={28} densities={[1, 2]} class="h-7 w-7" />
+        <Brand class="text-lg font-bold" />
+        <span class="sr-only">{t(locale, "nav.home")}</span>
+      </a>
+      <p class="mt-3 max-w-xs text-sm text-fg-1">{t(locale, "footer.tagline")}</p>
+    </div>
+    {
+      groups.map((g) => (
+        <nav aria-label={g.title}>
+          <h2 class="text-sm font-semibold text-fg-0">{g.title}</h2>
+          <ul class="mt-2">
+            {g.links.map((l) => (
+              <li>
+                <a
+                  href={l.href}
+                  rel={l.external ? "noopener" : undefined}
+                  class="inline-flex min-h-11 items-center text-sm text-fg-1 no-underline hover:text-fg-0 hover:underline md:min-h-9"
+                >
+                  {l.label}
+                  {l.external && <span class="sr-only"> {t(locale, "common.external")}</span>}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      ))
+    }
+  </div>
+  <div class="border-t border-line">
+    <p class="container-site py-6 text-xs leading-relaxed text-fg-2" set:html={licenseHtml} />
+  </div>
+</footer>

@@ -1,0 +1,63 @@
+---
+title: Privacy and encryption
+description: What end-to-end encryption means in tavrn, what the operator of a node can and cannot see, unencrypted channels, history backups, changed security keys and unknown devices.
+sidebar:
+  order: 8
+---
+
+import Screenshot from "../../../components/docs/Screenshot.astro";
+
+## What end-to-end encryption means here
+
+Your messages, attachments and calls are encrypted on your device and decrypted on the devices of the people you
+talk to. The keys never leave your devices, and the node in between only stores and forwards encrypted data: its
+operator cannot read along, and neither can anyone who breaks into it.
+
+Channels are encrypted unless a room admin decides otherwise; direct messages, groups and voice always are.
+
+## What the node can see
+
+To deliver messages, a node needs some information about them. Its operator can see:
+
+- who is a member of which room and conversation, and who writes when;
+- whom a message mentions, so that the node can notify them;
+- the size of files and messages;
+- your profile, your status and the address you connect from.
+
+When you send a link with a preview, your home node loads the linked page to build the preview, so it sees that
+link. The node never sees the text of encrypted messages, the names or contents of encrypted files, or your keys.
+
+## Channels without encryption
+
+A room admin can turn encryption off for a text, announcement or forum channel, for example for a large public
+channel. Such a channel shows a permanent banner that says the operator of the node can read along, and the change
+is recorded in the room's audit log. Files channels without encryption say so in the same way.
+
+## Your history on new devices
+
+Your devices back up the keys of your conversations to your home node, encrypted so that only your recovery key or
+a passkey can open them. That is how a new device can read your older messages after you unlock it. For a single
+conversation you can also choose **Keep the full history on this device** in its menu.
+
+Members who join a channel later read as much of its history as the channel allows; room admins set this per
+channel.
+
+## "Security key changed"
+
+Every person has a security key that vouches for their devices. When someone's key changes, you see a notice next
+to their name. Usually they reset their account, for example after losing their recovery key. If you verified them
+before, compare the safety number again; see [Friends and direct messages](/docs/users/friends-and-dms/).
+
+## Unknown devices ("ghost members")
+
+tavrn checks every device in a conversation against its owner's security key. If a device shows up that its owner
+has not confirmed, the app warns you and sends nothing until you have looked at it. Often it is just someone's new
+device, but it could be an attempt to listen in: when in doubt, ask the person.
+
+<Screenshot scene="settings-privacy-desktop" />
+
+## One honest limit
+
+The web app is code that your node sends to your browser. A malicious operator could send a modified app. Using
+the web app of a node you trust, or the desktop app, narrows this. tavrn's encryption code has not been audited
+by an independent firm yet.

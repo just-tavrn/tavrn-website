@@ -1,0 +1,14 @@
+node_modules
+dist
+.astro
+.git
+.claude
+test-results
+playwright-report
+blob-report
+coverage
+csp-script-hashes.txt
+data
+.env
+.env.*
+!.env.example

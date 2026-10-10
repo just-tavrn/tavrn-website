@@ -1,0 +1,44 @@
+---
+title: Files
+description: Files channels with folders, encrypted files, your own uploads, and what happens to attachments over time.
+sidebar:
+  order: 6
+---
+
+import Screenshot from "../../../components/docs/Screenshot.astro";
+
+A **files channel** is a shared folder for a room. It works like a file browser: folders, a list or grid view,
+sorting, previews of pictures and videos, and uploads with a button or by dragging files in.
+
+<Screenshot scene="files-desktop" />
+
+## Working with files
+
+Open a file's menu (right-click, **⋯**, or press and hold) to download, rename, move or delete it. Folders work the
+same way. Downloads only start when you choose the download icon, and SVG images are never opened in the app,
+only downloaded, because they can contain code.
+
+How much a channel can hold is set by the room and the node. Members need the permission to attach files to upload.
+
+## Encrypted files channels
+
+New files channels are end-to-end encrypted unless the person who creates them unticks it. Files are encrypted on
+your device before they leave it, together with their names and folder names. The node stores only encrypted data
+and sizes; it cannot see what the files are called or what they contain.
+
+Because the node cannot read the names, the search box filters only the open folder. The search panel of the app
+still finds files of encrypted channels through the search index on your device. A channel's encryption is fixed:
+to change it, create a new files channel and upload the files again.
+
+Files channels without encryption show a permanent banner saying that their files are not end-to-end encrypted.
+A room can also keep such a channel on an external storage of its own.
+
+## Your own uploads
+
+**Your files** in the toolbar lists everything you uploaded to the channel, with sizes and dates. You can delete
+your uploads there even when this device cannot decrypt them, so lost keys never leave your files on the node.
+
+## Attachments in messages
+
+Files you attach to messages belong to the message, not to a files channel. A node or a room may delete attachments
+after a number of days; the message then shows "file expired". Files of pinned messages are kept.

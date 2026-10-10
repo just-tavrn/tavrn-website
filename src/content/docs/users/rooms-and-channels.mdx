@@ -1,0 +1,58 @@
+---
+title: Rooms and channels
+description: Rooms, categories and the five kinds of channels, how to join a room by invite, and how to find public rooms in Discover.
+sidebar:
+  order: 3
+---
+
+import Screenshot from "../../../components/docs/Screenshot.astro";
+
+A **room** is a community: a gaming group, a club, a team. It lives on one node and has members, roles and
+channels, grouped into **categories**. Your rooms are listed in the narrow bar on the far left, the room rail;
+rooms of other nodes appear there under their domain. You can group rooms into folders: right-click the empty rail
+and choose **New folder…**, or drop one room onto another.
+
+## Kinds of channels
+
+| Channel | What it is for |
+|---|---|
+| Text | Conversations with messages, replies, reactions and threads |
+| Voice | Talking, video and screen sharing; click it to join |
+| Announcements | News from the moderators; everybody else reacts or replies in a thread |
+| Forum | Posts with a title and tags, sorted by latest activity or newest posts |
+| Files | A shared folder tree with uploads, folders and previews |
+
+A small lock next to each channel shows its encryption. A closed lock means end-to-end encrypted, which is the
+default and always the case for voice channels. An open lock in a warning colour means the channel is not
+end-to-end encrypted, and the channel says so in a banner. Some rooms and channels are marked **18+** and are only
+open to adults.
+
+## Joining a room
+
+Most rooms are joined with an **invite link** that a member shares with you. Open it, read the room's rules if it
+has any, and choose **Join**. Invite links can expire after an hour, a day, seven days or thirty days, or never,
+and can be limited to a number of uses.
+
+Someone can also invite you directly by your address. Such invitations wait in the invite list on your home view
+until you accept them.
+
+<Screenshot scene="invites-desktop" />
+
+## Discover
+
+**Discover**, the compass in the room rail, lists the public rooms and nodes your node knows about, across the
+whole network. Every card shows the domain of the node that hosts the room, and you can filter by name and size.
+Choose **Join** to become a member; for a room on another node, your home node vouches for you, and you keep using
+your own account.
+
+Room owners make their room appear in Discover under **Room settings → Overview → Listed in the directory**.
+
+<Screenshot scene="discover-desktop" />
+
+## Creating a room
+
+Choose **+** in the room rail to create a room, if your node allows you to. A new room starts with a text channel,
+a voice channel and a welcome channel. Add channels with **Create channel**, and see
+[moderation for room owners](/docs/users/moderation/) for roles and permissions.
+
+<Screenshot scene="channel-create-desktop" />

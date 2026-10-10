@@ -1,0 +1,55 @@
+---
+// SPDX-License-Identifier: Apache-2.0
+// Imprint (§ 5 DDG, § 18 Abs. 2 MStV). During the private phase the project owner runs the site as a private
+// person; the company's details replace these once it exists. Name, address and e-mail are build-time variables
+// (PUBLIC_IMPRINT_* and PUBLIC_CONTACT_EMAIL), so the repository holds no personal data.
+import {
+  PUBLIC_CONTACT_EMAIL,
+  PUBLIC_IMPRINT_CITY,
+  PUBLIC_IMPRINT_COUNTRY,
+  PUBLIC_IMPRINT_NAME,
+  PUBLIC_IMPRINT_STREET,
+} from "astro:env/client";
+import Brand from "../../components/Brand.astro";
+import Site from "../../layouts/Site.astro";
+import { t } from "../../i18n";
+
+const locale = Astro.currentLocale;
+if (PUBLIC_IMPRINT_NAME === "Name of the provider") {
+  console.warn("imprint: PUBLIC_IMPRINT_NAME/STREET/CITY are not set; the imprint shows placeholders (README.md, build-time values)");
+}
+---
+
+<Site title={t(locale, "legal.imprint_title")} description="Who is responsible for tavrn.org and how to reach us.">
+  <article class="container-site prose py-16 md:py-20">
+    <h1>Imprint</h1>
+    <p>Information according to § 5 of the German Digital Services Act (DDG).</p>
+
+    <h2>Provider</h2>
+    <address translate="no">
+      {PUBLIC_IMPRINT_NAME}<br />
+      {PUBLIC_IMPRINT_STREET}<br />
+      {PUBLIC_IMPRINT_CITY}<br />
+      {PUBLIC_IMPRINT_COUNTRY}
+    </address>
+
+    <h2>Contact</h2>
+    <p>E-mail: <a href={`mailto:${PUBLIC_CONTACT_EMAIL}`} translate="no">{PUBLIC_CONTACT_EMAIL}</a></p>
+
+    <h2>Responsible for the content</h2>
+    <p>
+      Responsible for the content according to § 18 (2) of the German Interstate Media Treaty (MStV): <span translate="no">{PUBLIC_IMPRINT_NAME}</span>,
+      address as above.
+    </p>
+
+    <h2>About this website</h2>
+    <p>
+      This is the website of the open-source project <Brand />. The project is in private review before its first
+      public release; until then the person named above runs the website privately and without commercial purpose.
+    </p>
+    <p>
+      Security problems in <Brand /> are reported privately, as the
+      <a href="https://github.com/just-tavrn/.github/blob/main/SECURITY.md" rel="noopener">security policy</a> describes.
+    </p>
+  </article>
+</Site>

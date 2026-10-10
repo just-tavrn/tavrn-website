@@ -1,0 +1,11 @@
+tavrn website
+Copyright 2026 The tavrn authors
+
+This repository contains the source of the tavrn website (https://tavrn.org). The code (Astro components,
+scripts, tests, deployment files and workflows) is licensed under the Apache License, Version 2.0 (see
+LICENSE-APACHE); the texts and screenshots are licensed under CC-BY-4.0 (see LICENSE-CC-BY-4.0 and LICENSE.md).
+The name "tavrn", the logo and the icons are trademarks of the project and are not covered by either license
+(see TRADEMARK.md).
+
+The built site includes the Inter typeface by Rasmus Andersson (SIL Open Font License 1.1) and icons from
+Lucide (ISC License).

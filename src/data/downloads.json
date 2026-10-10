@@ -1,0 +1,66 @@
+{
+  "generatedAt": "2026-10-10T00:00:00.000Z",
+  "example": true,
+  "web": {
+    "version": "0.2.0",
+    "tag": "v0.2.0",
+    "publishedAt": null,
+    "notes_url": "https://github.com/just-tavrn/tavrn-web/releases/tag/v0.2.0",
+    "assets": [
+      {
+        "name": "Tavrn_0.2.0_x64-setup.exe",
+        "url": "https://github.com/just-tavrn/tavrn-web/releases/download/v0.2.0/Tavrn_0.2.0_x64-setup.exe",
+        "size": 9800000,
+        "kind": "nsis",
+        "os": "windows",
+        "shell": "tauri",
+        "arch": "x64",
+        "signature": "https://github.com/just-tavrn/tavrn-web/releases/download/v0.2.0/Tavrn_0.2.0_x64-setup.exe.sig",
+        "checksum": "b98d1f0a8666b218b996cecef147ac7427716691ab8efa070afb1a98f128b683"
+      },
+      {
+        "name": "Tavrn_0.2.0_x64_en-US.msi",
+        "url": "https://github.com/just-tavrn/tavrn-web/releases/download/v0.2.0/Tavrn_0.2.0_x64_en-US.msi",
+        "size": 12600000,
+        "kind": "msi",
+        "os": "windows",
+        "shell": "tauri",
+        "arch": "x64",
+        "signature": "https://github.com/just-tavrn/tavrn-web/releases/download/v0.2.0/Tavrn_0.2.0_x64_en-US.msi.sig"
+      },
+      {
+        "name": "tavrn-electron_0.2.0_x64-setup.exe",
+        "url": "https://github.com/just-tavrn/tavrn-web/releases/download/v0.2.0/tavrn-electron_0.2.0_x64-setup.exe",
+        "size": 96400000,
+        "kind": "nsis",
+        "os": "windows",
+        "shell": "electron",
+        "arch": "x64"
+      },
+      {
+        "name": "Tavrn-0.2.0.AppImage",
+        "url": "https://github.com/just-tavrn/tavrn-web/releases/download/v0.2.0/Tavrn-0.2.0.AppImage",
+        "size": 118000000,
+        "kind": "appimage",
+        "os": "linux",
+        "shell": "electron",
+        "arch": "x64",
+        "sha512": "A8PX1U59N5OE8GOyYMGP+2x6fK9OdeeMSxJmXF8KmZwCsj2Fg407RKWsyvOi7Wta5w/R5cUCz9/pkm6AN7ZzGg=="
+      },
+      {
+        "name": "tavrn_0.2.0_amd64.deb",
+        "url": "https://github.com/just-tavrn/tavrn-web/releases/download/v0.2.0/tavrn_0.2.0_amd64.deb",
+        "size": 82300000,
+        "kind": "deb",
+        "os": "linux",
+        "shell": "electron",
+        "arch": "x64"
+      }
+    ]
+  },
+  "node": {
+    "version": "0.2.0",
+    "tag": "v0.2.0",
+    "image": "ghcr.io/just-tavrn/tavrn-node:0.2.0"
+  }
+}

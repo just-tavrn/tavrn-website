@@ -1,0 +1,58 @@
+---
+// SPDX-License-Identifier: Apache-2.0
+// A screenshot in the docs, by scene key of the manifest (src/assets/screenshots/manifest.ts): image, alt text and
+// caption come from there. A key the manifest does not know yet falls back to the chat screenshot with a build
+// warning, so a page can name a scene before the screenshot pipeline has produced it. Phone scenes are narrower.
+import { Picture } from "astro:assets";
+import { isPhone, screenshots, type SceneKey } from "../../assets/screenshots/manifest";
+
+interface Props {
+  scene: string;
+}
+
+const FALLBACK: SceneKey = "chat-desktop";
+const { scene } = Astro.props;
+const known = Object.hasOwn(screenshots, scene);
+if (!known) console.warn(`[docs] unknown screenshot scene "${scene}" on ${Astro.url.pathname}: showing ${FALLBACK}`);
+const key = (known ? scene : FALLBACK) as SceneKey;
+const shot = screenshots[key];
+const phone = isPhone(key);
+---
+
+<figure class:list={["docs-shot", { phone }]} data-scene={key}>
+  <Picture
+    src={shot.image}
+    alt={shot.alt}
+    formats={["webp"]}
+    fallbackFormat="png"
+    widths={phone ? [240, 390] : [480, 736, 960, 1472]}
+    sizes={phone ? "18rem" : "(min-width: 72rem) 46rem, calc(100vw - 2rem)"}
+    loading="lazy"
+    decoding="async"
+  />
+  <figcaption>{shot.caption}</figcaption>
+</figure>
+
+<style>
+  .docs-shot {
+    margin-block: 1.5rem;
+  }
+  .docs-shot :global(img) {
+    display: block;
+    width: 100%;
+    height: auto;
+    border: 1px solid var(--sl-color-hairline);
+    border-radius: 0.75rem;
+  }
+  .docs-shot.phone {
+    max-width: 18rem;
+  }
+  .docs-shot.phone :global(img) {
+    border-radius: 1.5rem;
+  }
+  figcaption {
+    margin-top: 0.5rem;
+    font-size: var(--sl-text-sm);
+    color: var(--sl-color-gray-2);
+  }
+</style>

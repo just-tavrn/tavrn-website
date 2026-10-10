@@ -1,0 +1,206 @@
+---
+// SPDX-License-Identifier: Apache-2.0
+// Report a problem: a short checklist, then one way to GitHub. The umbrella repository's issue chooser
+// (tavrn/.github/ISSUE_TEMPLATE/config.yml) asks what the problem is about and sends people to the form of the
+// right repository, to the security policy or to Discussions, so this page does not route by itself. Security
+// problems get their own card: private vulnerability reporting, never a public issue (the organization's
+// SECURITY.md). Static: plain links, no JavaScript.
+import { PUBLIC_GITHUB_ORG } from "astro:env/client";
+import Site from "../layouts/Site.astro";
+import { escapeHtml, localePath, rich, t } from "../i18n";
+
+const locale = Astro.currentLocale;
+const gh = `https://github.com/${PUBLIC_GITHUB_ORG}`;
+/** The security contact named in the organization's SECURITY.md. */
+const SECURITY_EMAIL = "security@tavrn.org";
+const external = `<span class="sr-only"> ${escapeHtml(t(locale, "common.external"))}</span>`;
+const link = (href: string, key: string, isExternal = false) =>
+  `<a class="link" href="${escapeHtml(href)}"${isExternal ? ' rel="noopener"' : ""}>${escapeHtml(t(locale, key))}${isExternal ? external : ""}</a>`;
+
+const checklist = [
+  rich(locale, "report.check.search", { linkHtml: link(localePath(locale, "/issues"), "report.check.search_link") }),
+  rich(locale, "report.check.update", { linkHtml: link(localePath(locale, "/download"), "report.check.update_link") }),
+  rich(locale, "report.check.one"),
+  rich(locale, "report.check.private"),
+  rich(locale, "report.check.public"),
+  rich(locale, "report.check.account"),
+];
+// The organization's SECURITY.md, "How to report": one private advisory form per repository.
+const advisories = (["node", "web", "crypto", "js", "protocol"] as const).map((part) => ({
+  label: t(locale, `report.security.${part}`),
+  repo: `tavrn-${part}`,
+  href: `${gh}/tavrn-${part}/security/advisories/new`,
+}));
+const hints = [
+  {
+    title: t(locale, "report.info.web_title"),
+    html: rich(locale, "report.info.web", { linkHtml: link(localePath(locale, "/status"), "report.info.web_link") }),
+  },
+  { title: t(locale, "report.info.desktop_title"), html: rich(locale, "report.info.desktop") },
+  {
+    title: t(locale, "report.info.node_title"),
+    html: rich(locale, "report.info.node", {
+      logsHtml: `<code translate="no">docker compose logs --since 1h tavrn</code>`,
+      versionHtml: `<code translate="no">https://&lt;node&gt;/api/v1/node</code>`,
+    }),
+  },
+];
+---
+
+<Site title={t(locale, "report.title")} description={t(locale, "report.lead")}>
+  <section class="container-site pt-16 pb-20 md:pt-24 md:pb-28">
+    <h1 class="text-4xl font-bold tracking-tight text-fg-0 md:text-5xl">{t(locale, "report.title")}</h1>
+    <p class="mt-4 max-w-2xl text-lg text-fg-1" set:html={rich(locale, "report.lead")} />
+
+    <div class="rp-grid mt-10">
+      <section class="rp-card" aria-labelledby="rp-before">
+        <h2 id="rp-before" class="rp-h2">{t(locale, "report.before_title")}</h2>
+        <ol class="rp-checklist">
+          {checklist.map((html) => <li set:html={html} />)}
+        </ol>
+      </section>
+
+      <section class="rp-card rp-cta" aria-labelledby="rp-cta">
+        <h2 id="rp-cta" class="rp-h2">{t(locale, "report.cta_title")}</h2>
+        <p class="mt-3 text-fg-1">{t(locale, "report.cta_text")}</p>
+        <a class="btn btn-primary mt-5" href={`${gh}/tavrn/issues/new/choose`} rel="noopener" data-report-github>
+          {t(locale, "report.cta_button")}<span class="sr-only"> {t(locale, "common.external")}</span>
+        </a>
+        <p
+          class="mt-5 text-sm text-fg-1"
+          set:html={rich(locale, "report.discussions", { linkHtml: link(`${gh}/tavrn/discussions`, "report.discussions_link", true) })}
+        />
+      </section>
+    </div>
+
+    <section class="rp-card rp-security mt-6" aria-labelledby="rp-security" data-report-security>
+      <h2 id="rp-security" class="rp-h2">{t(locale, "report.security_title")}</h2>
+      <p class="mt-3 max-w-3xl text-fg-1">{t(locale, "report.security_text")}</p>
+      <p class="mt-4 font-semibold text-fg-0">{t(locale, "report.security_list")}</p>
+      <ul class="rp-advisories">
+        {
+          advisories.map((a) => (
+            <li>
+              <a class="link" href={a.href} rel="noopener">
+                {a.label}
+                <span class="sr-only"> {t(locale, "common.external")}</span>
+              </a>{" "}
+              <code translate="no">{a.repo}</code>
+            </li>
+          ))
+        }
+      </ul>
+      <p
+        class="mt-4 text-fg-1"
+        set:html={rich(locale, "report.security_policy", { linkHtml: link(`${gh}/.github/blob/main/SECURITY.md`, "report.security_policy_link", true) })}
+      />
+      <p
+        class="mt-2 text-fg-1"
+        set:html={rich(locale, "report.security_mail", { emailHtml: `<a class="link" href="mailto:${SECURITY_EMAIL}" translate="no">${SECURITY_EMAIL}</a>` })}
+      />
+    </section>
+
+    <section class="mt-14" aria-labelledby="rp-info">
+      <h2 id="rp-info" class="text-2xl font-bold text-fg-0">{t(locale, "report.info_title")}</h2>
+      <p class="mt-3 max-w-3xl text-fg-1">{t(locale, "report.info_lead")}</p>
+      <dl class="rp-hints mt-6">
+        {
+          hints.map((h) => (
+            <div class="rp-card">
+              <dt class="rp-h3">{h.title}</dt>
+              <dd class="mt-2 text-fg-1" set:html={h.html} />
+            </div>
+          ))
+        }
+      </dl>
+    </section>
+  </section>
+</Site>
+
+<style>
+  .rp-grid {
+    display: grid;
+    gap: 1.5rem;
+  }
+  @media (min-width: 56rem) {
+    .rp-grid {
+      grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+      align-items: start;
+    }
+  }
+  .rp-card {
+    border: 1px solid var(--color-line);
+    border-radius: 0.75rem;
+    background: var(--color-bg-1);
+    padding: 1.25rem;
+    min-width: 0;
+  }
+  @media (min-width: 48rem) {
+    .rp-card {
+      padding: 1.5rem;
+    }
+  }
+  .rp-cta {
+    border-color: var(--color-accent);
+  }
+  .rp-security {
+    border-left: 4px solid var(--color-danger);
+  }
+  .rp-h2 {
+    color: var(--color-fg-0);
+    font-size: 1.25rem;
+    font-weight: 650;
+  }
+  .rp-h3 {
+    color: var(--color-fg-0);
+    font-size: 1.0625rem;
+    font-weight: 600;
+  }
+  .rp-checklist {
+    margin-top: 1rem;
+    padding-left: 1.5rem;
+    list-style: decimal;
+    color: var(--color-fg-1);
+    line-height: 1.6;
+  }
+  .rp-checklist li + li {
+    margin-top: 0.5rem;
+  }
+  .rp-checklist li::marker {
+    color: var(--color-accent);
+    font-weight: 700;
+  }
+  .rp-advisories {
+    margin-top: 0.5rem;
+    padding-left: 1.25rem;
+    list-style: disc;
+    color: var(--color-fg-1);
+    line-height: 1.6;
+  }
+  .rp-advisories li {
+    padding-block: 0.25rem;
+  }
+  .rp-advisories a,
+  .rp-checklist :global(a) {
+    display: inline-block;
+    min-height: 1.5rem;
+  }
+  .rp-card :global(code) {
+    border: 1px solid var(--color-line);
+    border-radius: 0.25rem;
+    background: var(--color-bg-2);
+    padding: 0 0.3rem;
+    color: var(--color-fg-0);
+    font-size: 0.875em;
+    overflow-wrap: anywhere;
+  }
+  .rp-hints {
+    display: grid;
+    gap: 1rem;
+  }
+  @media (min-width: 56rem) {
+    .rp-hints {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+</style>

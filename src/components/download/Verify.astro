@@ -1,0 +1,116 @@
+---
+// SPDX-License-Identifier: Apache-2.0
+// "Verify the download" of an operating system card: the SHA-256 of every file with the command that computes it
+// on that system, the notes on the updaters (Tauri's signatures, electron-updater's feed), and what the system says
+// about unsigned builds.
+import type { DownloadAsset } from "../../lib/releases";
+import { t } from "../../i18n";
+import type { CardKey } from "./OsCard.astro";
+
+interface Props {
+  card: CardKey;
+  assets: DownloadAsset[];
+}
+
+const { card, assets } = Astro.props;
+const locale = Astro.currentLocale;
+const first = assets[0]!;
+const system = card === "mobile" ? "android" : card;
+const command = {
+  windows: `Get-FileHash .\\${first.name} -Algorithm SHA256`,
+  linux: `sha256sum ${first.name}`,
+  macos: `shasum -a 256 ${first.name}`,
+  android: `sha256sum ${first.name}`,
+}[system];
+const appImage = assets.find((a) => a.kind === "appimage");
+const signed = assets.some((a) => a.signature);
+const electron = assets.some((a) => a.shell === "electron");
+---
+
+<details class="verify mt-5">
+  <summary>{t(locale, "download.verify.summary")}</summary>
+  <div class="verify-body">
+    <p>{t(locale, "download.verify.checksum_intro")}</p>
+    <dl class="sums">
+      {
+        assets.map((a) => (
+          <div>
+            <dt>
+              <code translate="no">{a.name}</code>
+            </dt>
+            <dd>
+              {a.checksum && (
+                <code translate="no" class="hash" aria-label={t(locale, "download.verify.checksum_label", { name: a.name })}>
+                  {a.checksum}
+                </code>
+              )}
+              {a.sha512 && (
+                <code translate="no" class="hash" aria-label={t(locale, "download.verify.sha512_label", { name: a.name })}>
+                  {`sha512: ${a.sha512}`}
+                </code>
+              )}
+              {!a.checksum && !a.sha512 && <span class="text-fg-2">{t(locale, "download.verify.checksum_missing")}</span>}
+            </dd>
+          </div>
+        ))
+      }
+    </dl>
+    <p>{t(locale, `download.verify.how_${system}`)}</p>
+    <pre><code translate="no">{command}</code></pre>
+    <p><a class="link" href="#verify">{t(locale, "download.verify.check_here")}</a></p>
+    {signed && <p>{t(locale, "download.verify.signature")}</p>}
+    {electron && (system === "linux" || system === "windows") && <p>{t(locale, `download.verify.electron_feed_${system}`)}</p>}
+    <p>{t(locale, `download.verify.unsigned_${system}`)}</p>
+    {system === "linux" && appImage && <pre><code translate="no">{`chmod +x ${appImage.name}`}</code></pre>}
+  </div>
+</details>
+
+<style>
+  .verify {
+    border-top: 1px solid var(--color-line);
+    padding-top: 0.75rem;
+  }
+  summary {
+    display: flex;
+    align-items: center;
+    min-height: 2.75rem;
+    cursor: pointer;
+    color: var(--color-fg-0);
+    font-weight: 600;
+    font-size: 0.9375rem;
+  }
+  .verify-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding-bottom: 0.25rem;
+    color: var(--color-fg-1);
+    font-size: 0.9375rem;
+    line-height: 1.6;
+  }
+  .sums {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+  }
+  dt code {
+    color: var(--color-fg-0);
+    font-size: 0.8125rem;
+    overflow-wrap: anywhere;
+  }
+  .hash {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--color-fg-1);
+    overflow-wrap: anywhere;
+  }
+  pre {
+    overflow-x: auto;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-md);
+    background: var(--color-bg-0);
+    padding: 0.625rem 0.75rem;
+    font-size: 0.8125rem;
+    color: var(--color-fg-0);
+  }
+</style>

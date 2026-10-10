@@ -1,0 +1,188 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# The tavrn website container: static files from /srv (the Astro build), security and cache headers, runtime
+# configuration for the status and download pages (/config.json), the /app redirect to the web app and, when
+# switched on, the identity-domain delegation document /.well-known/tavrn. TLS ends in front of it (Cloudflare,
+# then Nginx Proxy Manager; deploy/README.md), so this listens on plain HTTP :8080.
+#
+# Runtime environment (defaults after the colon; deploy/.env.example explains each):
+#   TAVRN_APP_URL       where /app redirects to (the web app of the official node)
+#   TAVRN_NODE_URL      the official node: /healthz, /readyz, /api/v1/node for the status page (no trailing slash)
+#   TAVRN_NODE_WS_URL   its WebSocket endpoint for the delegation document (entrypoint.sh derives it from TAVRN_NODE_URL)
+#   TAVRN_NODE_DOMAIN   the identity domain named in the delegation document
+#   TAVRN_WELLKNOWN     off (404), on (a static document from these variables) or proxy (the node's own document)
+#   UPTIME_KUMA_URL     base URL of the Uptime Kuma instance as this container reaches it (empty: no uptime history)
+#   UPTIME_KUMA_PAGE    slug of its public status page
+#   GITHUB_READ_TOKEN   read-only GitHub token for the known-issues list (/gh/issues; empty: that path is 404)
+#   GITHUB_ORG          the GitHub organization whose open issues the list shows
+
+{
+	admin off
+	auto_https off
+	persist_config off
+	servers {
+		# Plain HTTP/1.1 and h2c behind the proxy (no HTTP/3 advertisement).
+		protocols h1 h2c
+	}
+}
+
+:8080 {
+	root * /srv
+	encode zstd gzip
+
+	# Access log on stdout without anything that identifies a visitor: no IP addresses (also not the ones the
+	# proxies pass on) and no user agent (privacy policy, "Hosting and server logs").
+	log {
+		output stdout
+		format filter {
+			wrap json
+			request>remote_ip delete
+			request>remote_port delete
+			request>client_ip delete
+			request>headers>User-Agent delete
+			request>headers>Cf-Connecting-Ip delete
+			request>headers>X-Forwarded-For delete
+			request>headers>X-Real-Ip delete
+			request>headers>True-Client-Ip delete
+			request>headers>Forwarded delete
+			request>headers>Cf-Ipcountry delete
+			request>headers>Cookie delete
+		}
+	}
+
+	header {
+		Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+		# connect-src: the official node, which the status page and the header pill ask directly (CORS * on the node).
+		# Uptime Kuma is not listed: its history comes through this server (/uptime/ below).
+		# Scripts: our bundled files, the hashes of the few inline scripts Starlight renders (written at build time by
+		# scripts/csp-hashes.mjs) and WebAssembly for the Pagefind search. Inline style attributes come from Starlight.
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' {file./etc/caddy/csp-script-hashes.txt}; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' {$TAVRN_NODE_URL:https://tavrn.swsp.eu}; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+		Referrer-Policy no-referrer
+		X-Content-Type-Options nosniff
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		Cross-Origin-Opener-Policy same-origin
+		-Server
+	}
+
+	# Cache: hashed build assets forever, HTML always revalidated, everything else for an hour.
+	@immutable path /_astro/*
+	@html path_regexp ^(.*/|[^.]*|.*\.html)$
+	@asset {
+		not path /_astro/*
+		not path_regexp ^(.*/|[^.]*|.*\.html)$
+	}
+	header @immutable Cache-Control "public, max-age=31536000, immutable"
+	header @html Cache-Control "no-cache"
+	header @asset Cache-Control "public, max-age=3600"
+
+	# "Open the web app": the web app of the official node.
+	@app path /app /app/
+	redir @app {$TAVRN_APP_URL:https://tavrn.swsp.eu} 302
+
+	# Runtime configuration for the islands of the status and download pages.
+	handle /config.json {
+		header Content-Type application/json
+		header Cache-Control no-cache
+		respond `{"appUrl":"{$TAVRN_APP_URL:https://tavrn.swsp.eu}","nodeUrl":"{$TAVRN_NODE_URL:https://tavrn.swsp.eu}","nodeDomain":"{$TAVRN_NODE_DOMAIN:tavrn.org}","uptimeKumaUrl":"{$UPTIME_KUMA_URL:}","uptimeKumaPage":"{$UPTIME_KUMA_PAGE:}"}` 200
+	}
+
+	# Uptime history for the status page: Uptime Kuma's public status-page API sends no CORS headers outside its
+	# development mode, so the browser asks this server, which forwards exactly the two read-only endpoints of the
+	# configured status page (GET /uptime/api/status-page/<slug> and .../heartbeat/<slug>) and nothing that identifies
+	# the visitor. Without UPTIME_KUMA_URL and UPTIME_KUMA_PAGE these paths are 404 like any other unknown path.
+	@uptime {
+		method GET
+		path /uptime/api/status-page/{$UPTIME_KUMA_PAGE:} /uptime/api/status-page/heartbeat/{$UPTIME_KUMA_PAGE:}
+		expression `"{$UPTIME_KUMA_URL:}" != "" && "{$UPTIME_KUMA_PAGE:}" != ""`
+	}
+	handle @uptime {
+		uri strip_prefix /uptime
+		header Cache-Control "no-cache"
+		# The fallback upstream is never used: the matcher above requires UPTIME_KUMA_URL.
+		reverse_proxy {$UPTIME_KUMA_URL:http://127.0.0.1:9} {
+			header_up Host {upstream_hostport}
+			header_up -Cookie
+			header_up -User-Agent
+			header_up -Referer
+			header_up -X-Forwarded-For
+			header_up -X-Forwarded-Host
+			header_up -X-Real-Ip
+			header_up -Cf-Connecting-Ip
+			header_up -Cf-Ipcountry
+			header_up -True-Client-Ip
+			header_up -Forwarded
+			header_down -Set-Cookie
+		}
+	}
+
+	# The known-issues page (/issues): the browser never talks to GitHub. This server forwards exactly one read-only
+	# search, GET /gh/issues -> GitHub's issue search for the open issues of the organization's repositories, with a
+	# read-only token added here and nothing from the visitor: every request header of the client is dropped (cookies,
+	# user agent, forwarded IP addresses, any Authorization of its own) and query parameters are ignored (the rewrite
+	# replaces the whole URI). Of GitHub's answer only the body goes back, as JSON that Cloudflare and browsers may
+	# cache for five minutes; GitHub's headers (cookies, rate-limit and request ids, its own security headers) are
+	# dropped. Without GITHUB_READ_TOKEN the path is 404 like any other unknown path, and the page says so.
+	@ghissues {
+		method GET
+		path /gh/issues
+		expression `"{$GITHUB_READ_TOKEN:}" != ""`
+	}
+	handle @ghissues {
+		rewrite * /search/issues?q=org:{$GITHUB_ORG:just-tavrn}+is:issue+is:open&sort=updated&order=desc&per_page=100
+		header Cache-Control "public, max-age=300"
+		header -Via
+		reverse_proxy https://api.github.com {
+			# Everything the client sent goes; then exactly the headers GitHub's API expects.
+			header_up -*
+			header_up Host {upstream_hostport}
+			header_up Authorization "Bearer {$GITHUB_READ_TOKEN:}"
+			header_up Accept application/vnd.github+json
+			header_up X-GitHub-Api-Version 2022-11-28
+			header_up User-Agent tavrn-website
+			# reverse_proxy adds these itself after the client's headers are gone.
+			header_up -X-Forwarded-For
+			header_up -X-Forwarded-Host
+			header_up -X-Forwarded-Proto
+			header_up -Via
+			header_down -*
+			header_down Content-Type "application/json; charset=utf-8"
+		}
+	}
+
+	# Identity-domain delegation (tavrn-node's HANDBOOK.md, "Identity domain and node host"). "proxy" forwards to the
+	# node's own document, which carries its signing keys and is what the handbook recommends; "on" answers a static
+	# document with the endpoints only.
+	handle /.well-known/tavrn {
+		@static expression `"{$TAVRN_WELLKNOWN:off}" == "on"`
+		@proxied expression `"{$TAVRN_WELLKNOWN:off}" == "proxy"`
+		handle @static {
+			header Content-Type application/json
+			header Access-Control-Allow-Origin *
+			header Cache-Control "max-age=300"
+			respond `{"tavrn":1,"domain":"{$TAVRN_NODE_DOMAIN:tavrn.org}","api":"{$TAVRN_NODE_URL:https://tavrn.swsp.eu}/api/v1","ws":"{$TAVRN_NODE_WS_URL:wss://tavrn.swsp.eu/api/v1/ws}","web":"{$TAVRN_APP_URL:https://tavrn.swsp.eu}"}` 200
+		}
+		handle @proxied {
+			reverse_proxy {$TAVRN_NODE_URL:https://tavrn.swsp.eu} {
+				header_up Host {upstream_hostport}
+			}
+		}
+		handle {
+			error 404
+		}
+	}
+
+	# The site: clean URLs (Astro's build.format "directory"), hidden dotfiles.
+	handle {
+		try_files {path} {path}/index.html {path}.html
+		file_server {
+			hide .*
+		}
+	}
+
+	handle_errors 404 {
+		rewrite * /404.html
+		file_server {
+			status 404
+		}
+	}
+}

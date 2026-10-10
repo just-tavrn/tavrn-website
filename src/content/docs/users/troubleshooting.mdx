@@ -1,0 +1,61 @@
+---
+title: Troubleshooting
+description: What to do when you cannot sign in, lost your second factor, cannot hear others in voice, or see messages that cannot be decrypted.
+sidebar:
+  order: 14
+---
+
+## I cannot sign in
+
+- Check that you are on the web app of **your** node. If your account is on another node, choose **Sign in with an
+  account of another node** and enter your full address, such as `alice@node.example`.
+- Forgot your password? **Forgot password?** on the sign-in page sends a reset link, but only if your account has
+  a confirmed e-mail address. Otherwise ask the operator of your node.
+
+## I lost my second factor
+
+Choose **Use a recovery code** when the app asks for your code, and enter one of your recovery codes. Then go to
+**Settings → Security**, set up a new authenticator app or passkey, and generate new recovery codes.
+
+Without a recovery code, only an admin of your node can reset your second factor. Your encrypted messages still
+unlock with your recovery key afterwards.
+
+## Others cannot hear me, or I cannot hear them
+
+1. Check that the browser may use your microphone. If the device lists stay empty, choose **Show devices**.
+2. Try **Hear yourself** under **Settings → Voice & video** to check the microphone and noise suppression.
+3. Run **Test connection** on the same page. It tries every way to reach the voice server and says what is
+   blocked; strict company or school networks often block the ports that voice needs.
+4. Voice needs a current browser. The Linux desktop app cannot do voice yet; use a browser there.
+
+## Messages say they cannot be decrypted
+
+A message shows a short reason instead of its text when this device cannot read it.
+
+- **"Not decrypted on this device yet"**: the device is locked. Unlock it with your recovery key or a passkey.
+- **"No key for this message"**: the message is older than your membership, and the channel does not share that
+  much history with new members, or the key was not in your backup. Keys of older messages may still arrive from
+  other members' devices.
+- **"Sending device not confirmed"** or a signature warning: tavrn could not confirm who sent it, so it hides the
+  content. Ask the sender.
+
+If you reset your security key, older encrypted messages stay unreadable for you. Rooms can restore them: the
+banner in the channel lets you ask the room's moderators, who approve the request after checking that it is really
+you.
+
+## Notifications do not arrive
+
+Check that notifications are allowed for the site in your browser settings and that the room is not muted. Push
+notifications only arrive while no tavrn tab is open; on iPhone and iPad, tavrn has to be added to the home screen
+first. See [Notifications](/docs/users/notifications/).
+
+## A node cannot be reached
+
+When a node is down, only its own rooms and conversations are unavailable, and the app reconnects when it is back.
+
+## Still stuck?
+
+Look at the [known issues](/issues): the problem may already be known, with a workaround. If it is not, use
+[Report a problem](/report), which explains what helps and where the report goes. Questions go to the
+[Discussions](https://github.com/just-tavrn/tavrn/discussions). Problems with a particular node, such
+as a lost account, are for its operator; the node's imprint names how to reach them.

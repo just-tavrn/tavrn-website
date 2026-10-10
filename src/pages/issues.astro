@@ -1,0 +1,314 @@
+---
+// SPDX-License-Identifier: Apache-2.0
+// The known issues: the open issues of the project's repositories on GitHub (Preact island,
+// src/components/issues/KnownIssues.tsx). The island reads /gh/issues, which the site's own server fetches from
+// GitHub (deploy/Caddyfile), so the visitor's browser never contacts GitHub until they follow a link.
+import { PUBLIC_GITHUB_ORG } from "astro:env/client";
+import KnownIssues from "../components/issues/KnownIssues";
+import Site from "../layouts/Site.astro";
+import { escapeHtml, DEFAULT_LOCALE, localePath, MESSAGES, resolveLocale, rich, t } from "../i18n";
+import { githubSearchUrl } from "../lib/issues";
+
+const locale = Astro.currentLocale;
+const pageOnly = new Set(["issues.nav", "issues.title", "issues.lead", "issues.note", "issues.nojs", "issues.report_hint", "issues.status_hint", "issues.status_link", "issues.full_list_link"]);
+const strings = Object.fromEntries(
+  Object.keys(MESSAGES[DEFAULT_LOCALE])
+    .filter((k) => k.startsWith("issues.") && !pageOnly.has(k))
+    .map((k) => [k, t(locale, k)]),
+);
+const fullListHtml = `<a class="link" href="${escapeHtml(githubSearchUrl(PUBLIC_GITHUB_ORG, ""))}" rel="noopener">${escapeHtml(t(locale, "issues.full_list_link"))}<span class="sr-only"> ${escapeHtml(t(locale, "issues.external"))}</span></a>`;
+const reportHtml = `<a class="link" href="${localePath(locale, "/report")}">${escapeHtml(t(locale, "report.nav"))}</a>`;
+---
+
+<Site title={t(locale, "issues.title")} description={t(locale, "issues.lead")}>
+  <section class="container-site pt-16 pb-20 md:pt-24 md:pb-28">
+    <h1 class="text-4xl font-bold tracking-tight text-fg-0 md:text-5xl">{t(locale, "issues.title")}</h1>
+    <p class="mt-4 max-w-2xl text-lg text-fg-1" set:html={rich(locale, "issues.lead")} />
+    <p class="mt-3 max-w-2xl text-fg-1" set:html={rich(locale, "issues.note")} />
+    <p class="mt-3 max-w-2xl text-fg-1" set:html={fullListHtml} />
+    <p class="mt-3 max-w-2xl text-fg-1" set:html={rich(locale, "issues.report_hint", { linkHtml: reportHtml })} />
+    <noscript><p class="ki-noscript">{t(locale, "issues.nojs")}</p></noscript>
+    <div class="mt-8">
+      <KnownIssues client:load strings={strings} locale={resolveLocale(locale)} org={PUBLIC_GITHUB_ORG} />
+    </div>
+  </section>
+</Site>
+
+<style is:global>
+  .known-issues {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    min-height: 12rem;
+  }
+  .ki-noscript {
+    margin-top: 1.5rem;
+    color: var(--color-fg-1);
+  }
+  .ki-message {
+    color: var(--color-fg-1);
+    font-size: 1.0625rem;
+  }
+  .ki-note {
+    border-left: 3px solid var(--color-accent);
+    padding-left: 0.875rem;
+    color: var(--color-fg-1);
+  }
+  .ki-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1.25rem;
+  }
+  .ki-search-label {
+    display: block;
+    color: var(--color-fg-0);
+    font-weight: 600;
+  }
+  .ki-search-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 1.25rem;
+    margin-top: 0.5rem;
+  }
+  .ki-input {
+    flex: 1 1 18rem;
+    min-width: 0;
+    max-width: 36rem;
+    min-height: 2.75rem;
+    border: 1px solid var(--color-line-strong);
+    border-radius: var(--radius-md);
+    background: var(--color-bg-3);
+    padding: 0.5rem 0.75rem;
+    color: var(--color-fg-0);
+    font-size: 1rem;
+  }
+  .ki-hint {
+    margin-top: 0.375rem;
+    color: var(--color-fg-2);
+    font-size: 0.875rem;
+  }
+  .ki-chips,
+  .ki-order {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .ki-chips-label {
+    margin-right: 0.25rem;
+    color: var(--color-fg-2);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .ki-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 2.75rem;
+    border: 1px solid var(--color-line-strong);
+    border-radius: 999px;
+    background: var(--color-bg-1);
+    padding: 0.25rem 0.875rem;
+    color: var(--color-fg-0);
+    font-size: 0.875rem;
+    cursor: pointer;
+  }
+  @media (min-width: 48rem) {
+    .ki-chip {
+      min-height: 2.25rem;
+    }
+  }
+  .ki-chip:hover {
+    background: var(--color-bg-3);
+  }
+  .ki-chip[aria-pressed="true"] {
+    border-color: var(--color-accent);
+    background: var(--color-accent-soft);
+  }
+  .ki-chip[aria-pressed="true"]::before {
+    /* Decoration only: aria-pressed tells assistive technology; the empty alternative keeps it out of the name. */
+    content: "✓";
+    content: "✓" / "";
+    color: var(--color-accent);
+    font-weight: 700;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .ki-chip {
+      transition: background-color 120ms ease, border-color 120ms ease;
+    }
+  }
+  .ki-chip-count {
+    color: var(--color-fg-2);
+    font-variant-numeric: tabular-nums;
+  }
+  .ki-dot {
+    flex: none;
+    width: 0.625rem;
+    height: 0.625rem;
+    border-radius: 999px;
+    border: 1px solid var(--color-line-strong);
+    background: var(--color-bg-3);
+  }
+  .ki-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem 1.5rem;
+    border-top: 1px solid var(--color-line);
+    padding-top: 1rem;
+  }
+  .ki-count {
+    color: var(--color-fg-0);
+    font-weight: 600;
+  }
+  .ki-group-title {
+    color: var(--color-fg-0);
+    font-size: 1.25rem;
+    font-weight: 650;
+  }
+  .ki-group-count {
+    color: var(--color-fg-2);
+    font-weight: 400;
+  }
+  .ki-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+  }
+  .ki-issue {
+    border: 1px solid var(--color-line);
+    border-radius: 0.75rem;
+    background: var(--color-bg-1);
+    padding: 1rem 1.25rem;
+    min-width: 0;
+  }
+  .ki-issue-title {
+    display: inline-block;
+    color: var(--color-fg-0);
+    font-weight: 600;
+    font-size: 1.0625rem;
+    text-decoration: underline;
+    text-decoration-color: var(--color-line-strong);
+    text-underline-offset: 3px;
+    overflow-wrap: anywhere;
+  }
+  .ki-issue-title:hover {
+    color: var(--color-accent-hover);
+    text-decoration-color: currentColor;
+  }
+  .ki-issue-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1rem;
+    margin-top: 0.375rem;
+    color: var(--color-fg-2);
+    font-size: 0.875rem;
+  }
+  .ki-ref {
+    color: var(--color-fg-1);
+    font-variant-numeric: tabular-nums;
+  }
+  .ki-issue-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 0.625rem;
+  }
+  /* Type: a leading badge, its colour from the tokens (bug danger, feature accent, docs muted, task neutral). */
+  .ki-type {
+    flex: none;
+    border: 1px solid var(--color-line-strong);
+    border-radius: 0.375rem;
+    padding: 0 0.5rem;
+    color: var(--color-fg-1);
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .ki-type[data-type="bug"] {
+    border-color: var(--color-danger);
+    color: var(--color-danger);
+  }
+  .ki-type[data-type="feature"] {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+  }
+  .ki-type[data-type="docs"] {
+    border-color: var(--color-line-strong);
+    color: var(--color-fg-2);
+  }
+  .ki-type[data-type="task"] {
+    border-color: var(--color-line);
+    color: var(--color-fg-1);
+  }
+  .ki-type-dot {
+    flex: none;
+    width: 0.625rem;
+    height: 0.625rem;
+    border-radius: 0.125rem;
+    border: 2px solid var(--color-line);
+  }
+  .ki-type-dot[data-type="bug"] {
+    border-color: var(--color-danger);
+  }
+  .ki-type-dot[data-type="feature"] {
+    border-color: var(--color-accent);
+  }
+  .ki-type-dot[data-type="docs"] {
+    border-color: var(--color-fg-2);
+  }
+  .ki-status {
+    color: var(--color-fg-0);
+    font-weight: 600;
+  }
+  .ki-status::before {
+    content: "";
+    display: inline-block;
+    width: 0.5rem;
+    height: 0.5rem;
+    margin-right: 0.375rem;
+    border-radius: 999px;
+    background: var(--color-ok);
+    vertical-align: 0.0625rem;
+  }
+  .ki-status[data-status="progress"]::before {
+    background: var(--color-accent);
+  }
+  .ki-status[data-status="triage"]::before {
+    background: var(--color-warn);
+  }
+  .ki-badge {
+    border: 1px solid var(--color-accent);
+    border-radius: 999px;
+    padding: 0 0.5rem;
+    color: var(--color-fg-0);
+    font-size: 0.75rem;
+    line-height: 1.25rem;
+  }
+  .ki-labels {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    margin-top: 0.5rem;
+  }
+  .ki-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0 0.25rem;
+    color: var(--color-fg-2);
+    font-size: 0.75rem;
+  }
+  .ki-label .ki-dot {
+    width: 0.5rem;
+    height: 0.5rem;
+  }
+</style>

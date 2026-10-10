@@ -1,0 +1,58 @@
+---
+title: Voice, video and screen sharing
+description: Joining voice channels, push-to-talk, noise suppression, the camera, screen sharing, the soundboard and calls in direct messages.
+sidebar:
+  order: 5
+---
+
+import Screenshot from "../../../components/docs/Screenshot.astro";
+
+Voice in tavrn is always end-to-end encrypted: the node passes the encrypted audio and video on, but cannot listen
+or watch. Because of that, there are no recordings on the server.
+
+## Joining a voice channel
+
+Click a voice channel to join it. The channel list shows who is in which channel, with icons for muted, deafened,
+camera and screen sharing. While you are connected, the **voice bar** at the bottom of the sidebar keeps the
+buttons to mute, deafen and leave at hand, and shows the connection quality, also while you read text channels.
+
+<Screenshot scene="voice-desktop" />
+
+If your connection drops, tavrn reconnects by itself; the others see a small plug on your avatar meanwhile.
+
+## Microphone, push-to-talk and noise suppression
+
+Everything is under **Settings → Voice & video**, saved for each device:
+
+- **Input mode**: voice activation, or push-to-talk with a key you choose. In the browser the key works while the
+  tab has the focus; in the desktop app it also works while a game is in front.
+- **Noise suppression**: off, your browser's own, or a noise filter that runs on your device. Echo cancellation,
+  automatic gain and a noise gate are there too.
+- **Tests**: "Hear yourself" plays your microphone back as others hear it, "Record and play back" records five
+  seconds.
+
+A right-click on the microphone or headphones button opens a quick menu with your devices and volume sliders. You
+can also set the volume of each person from their menu.
+
+## Camera and screen sharing
+
+Turn the camera on from the call controls; the settings offer background blur or an image behind you. **Share
+screen** asks your browser which screen, window or tab to share, optionally with its sound. The node decides the
+highest resolution and frame rate.
+
+## Soundboard
+
+Rooms can have a soundboard: short clips that members with the permission play into the call from the call
+controls. Room owners add clips under **Room settings → Soundboard**.
+
+## Calls in direct messages
+
+The call button in the header of a direct message or group rings the others on all their devices, also on other
+nodes. A call nobody answers within 45 seconds is listed as a missed call.
+
+<Screenshot scene="voice-phone" />
+
+:::tip
+If others cannot hear you, run **Settings → Voice & video → Test connection**. It tries every way to reach the
+voice server and tells you what to fix. [Troubleshooting](/docs/users/troubleshooting/) has more.
+:::

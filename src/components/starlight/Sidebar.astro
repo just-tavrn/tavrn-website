@@ -1,0 +1,15 @@
+---
+// SPDX-License-Identifier: Apache-2.0
+// Starlight's sidebar without its state persister (sessionStorage and an inline restore script): the site stores
+// nothing in the browser, and the docs keep a strict Content-Security-Policy.
+import MobileMenuFooter from "@astrojs/starlight/components/MobileMenuFooter.astro";
+import SidebarSublist from "@astrojs/starlight/components/SidebarSublist.astro";
+
+const { sidebar } = Astro.locals.starlightRoute;
+---
+
+<SidebarSublist sublist={sidebar} />
+
+<div class="md:sl-hidden">
+  <MobileMenuFooter />
+</div>

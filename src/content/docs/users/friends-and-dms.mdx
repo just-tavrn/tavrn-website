@@ -1,0 +1,52 @@
+---
+title: Friends and direct messages
+description: Friend requests, direct messages and groups, who can message you, message requests, blocking, and verifying someone's security key.
+sidebar:
+  order: 7
+---
+
+import Screenshot from "../../../components/docs/Screenshot.astro";
+
+Direct messages and groups are always end-to-end encrypted. They work across nodes: you write to people by their
+address, wherever their home node is.
+
+## Friends
+
+Open **Friends** on the home view and send a request to a username or a full address such as `bob@other.example`.
+The other person accepts or declines. The same page lists incoming and sent requests, your friends and the people
+you blocked.
+
+<Screenshot scene="friends-desktop" />
+
+## Direct messages and groups
+
+Choose **New direct message** and pick a friend, or type a name or `name@domain`. **New group** starts a
+conversation with several people; a group can have a name, and members can be added or removed later. A direct
+message lives on the home node of the person who started it, and the list shows that node's domain.
+
+<Screenshot scene="dm-desktop" />
+
+## Who can message you
+
+Under **Settings → Privacy & safety → Who can message me** you choose between:
+
+- **Friends only**,
+- **Friends and people in shared rooms** (the default), or
+- **Everyone**.
+
+Your node may allow less than you choose. Messages from people who are not your friends wait under **Message
+requests**: you read the first message, then accept, decline, or decline and block. The sender is not told when you
+decline.
+
+**Block** someone from their menu or the friends page: they can no longer send you requests or messages and do not
+see whether you are online.
+
+## Verifying a contact
+
+Every person has a **security key** that proves their devices belong to them. To make sure nobody is listening in,
+open **Verify** in a contact's menu and compare the **safety number** with them in person or over a call, or let
+them scan the QR code. If the numbers match, mark the contact as verified.
+
+If the security key of a verified contact changes later, tavrn warns you and stops sending to them until you verify
+again or confirm that you trust the new key. A changed key usually means that the person set up their account
+again, but asking them is the safe thing to do.

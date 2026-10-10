@@ -1,0 +1,17 @@
+---
+// SPDX-License-Identifier: Apache-2.0
+// The roadmap, rendered from src/content/pages/roadmap.md: generated from the umbrella repository's docs/roadmap.md
+// (sources/tavrn) by scripts/sync-docs.mjs before every build, like the wiki's copy at /docs/developers/roadmap.
+import { getEntry, render } from "astro:content";
+import Site from "../layouts/Site.astro";
+
+const entry = await getEntry("pages", "roadmap");
+if (!entry) throw new Error("src/content/pages/roadmap.md is missing: run `just sync-docs` (it is generated)");
+const { Content } = await render(entry);
+---
+
+<Site title={entry.data.title} description={entry.data.description}>
+  <article class="container-site prose py-16 md:py-20">
+    <Content />
+  </article>
+</Site>

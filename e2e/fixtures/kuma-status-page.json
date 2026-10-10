@@ -1,0 +1,37 @@
+{
+  "config": {
+    "slug": "tavrn",
+    "title": "tavrn status",
+    "description": null,
+    "icon": "/icon.svg",
+    "theme": "dark",
+    "published": true,
+    "showTags": false,
+    "showPoweredBy": false
+  },
+  "incidents": [
+    {
+      "id": 3,
+      "style": "warning",
+      "title": "Voice degraded in Europe",
+      "content": "We are looking into **dropped calls**. <script>alert(1)</script>",
+      "pin": true,
+      "active": true,
+      "createdDate": "2026-10-10 08:15:00",
+      "lastUpdatedDate": "2026-10-10 09:00:00",
+      "status_page_id": 1
+    }
+  ],
+  "publicGroupList": [
+    {
+      "id": 1,
+      "name": "Services",
+      "weight": 1,
+      "monitorList": [
+        { "id": 1, "name": "Node API", "sendUrl": 0, "type": "http" },
+        { "id": 2, "name": "Web app", "sendUrl": 0, "type": "http" }
+      ]
+    }
+  ],
+  "maintenanceList": []
+}
