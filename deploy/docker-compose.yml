@@ -2,7 +2,7 @@
 #
 # The tavrn website as a Portainer / Compose stack. Nginx Proxy Manager reaches the container on the shared Docker
 # network as website:8080 (no published port); Cloudflare sits in front of NPM (deploy/README.md).
-# Build-time values (contact e-mail, node URL in the page text) are baked into the image; see README.md.
+# The image is generic: every operator-specific value, including the imprint, is set here (README.md, "Configuration").
 
 services:
   website:
@@ -26,6 +26,15 @@ services:
       # available yet. GITHUB_ORG is the organization whose open issues it shows.
       GITHUB_READ_TOKEN: ${GITHUB_READ_TOKEN:-}
       GITHUB_ORG: ${GITHUB_ORG:-just-tavrn}
+      # The imprint and the GDPR controller of the privacy policy, filled into /legal/imprint/ and /legal/privacy/ at
+      # request time (personal data: set them in the stack, not in a repository). The defaults are visible
+      # placeholders; the container logs a warning while name, street or city are unset.
+      TAVRN_IMPRINT_NAME: ${TAVRN_IMPRINT_NAME:-Name of the provider}
+      TAVRN_IMPRINT_STREET: ${TAVRN_IMPRINT_STREET:-Street and number}
+      TAVRN_IMPRINT_CITY: ${TAVRN_IMPRINT_CITY:-Postal code and city}
+      TAVRN_IMPRINT_COUNTRY: ${TAVRN_IMPRINT_COUNTRY:-Germany}
+      # Contact address in the imprint and the privacy policy (a plain address).
+      TAVRN_CONTACT_EMAIL: ${TAVRN_CONTACT_EMAIL:-hello@tavrn.org}
     read_only: true
     tmpfs:
       - /tmp

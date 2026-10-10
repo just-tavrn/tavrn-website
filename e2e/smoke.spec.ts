@@ -38,3 +38,18 @@ test("pages carry canonical, hreflang and Open Graph tags", async ({ page }) => 
   await expect(page.locator('link[rel="alternate"][hreflang="x-default"]')).toHaveAttribute("href", "https://tavrn.org/download/");
   await expect(page.locator('meta[property="og:image"]')).toHaveAttribute("content", "https://tavrn.org/og.png");
 });
+
+test("the legal pages carry the provider's details as template actions for the container", async ({ page }) => {
+  // The container (Caddy's templates, deploy/Caddyfile) fills these in at request time; the preview serves the
+  // pages as built, so the actions show as they are (deploy/test/legal-templates.sh checks the rendered pages).
+  const email = '{{env "TAVRN_CONTACT_EMAIL"}}';
+  await page.goto("/legal/imprint");
+  const address = page.locator("address");
+  await expect(address).toHaveAttribute("translate", "no");
+  await expect(address).toContainText('{{env "TAVRN_IMPRINT_NAME"}}');
+  await expect(address).toContainText('{{env "TAVRN_IMPRINT_COUNTRY"}}');
+  await expect(page.getByRole("link", { name: email })).toHaveAttribute("href", `mailto:${email}`);
+  await page.goto("/legal/privacy");
+  await expect(page.locator("address").getByRole("link", { name: email })).toHaveAttribute("href", `mailto:${email}`);
+  await expect(page.locator('code[translate="no"]', { hasText: '{{env "TAVRN_NODE_HOST"}}' })).toBeVisible();
+});

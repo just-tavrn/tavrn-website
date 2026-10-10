@@ -1,23 +1,15 @@
 ---
 // SPDX-License-Identifier: Apache-2.0
 // Imprint (§ 5 DDG, § 18 Abs. 2 MStV). During the private phase the project owner runs the site as a private
-// person; the company's details replace these once it exists. Name, address and e-mail are build-time variables
-// (PUBLIC_IMPRINT_* and PUBLIC_CONTACT_EMAIL), so the repository holds no personal data.
-import {
-  PUBLIC_CONTACT_EMAIL,
-  PUBLIC_IMPRINT_CITY,
-  PUBLIC_IMPRINT_COUNTRY,
-  PUBLIC_IMPRINT_NAME,
-  PUBLIC_IMPRINT_STREET,
-} from "astro:env/client";
+// person; the company's details replace these once it exists. Name, address and e-mail are runtime variables of the
+// container (TAVRN_IMPRINT_*, TAVRN_CONTACT_EMAIL), filled in by Caddy at request time (src/lib/runtime-env.ts), so
+// neither the repository nor the image holds personal data.
 import Brand from "../../components/Brand.astro";
 import Site from "../../layouts/Site.astro";
 import { t } from "../../i18n";
+import { contactLinkHtml, runtimeEnv } from "../../lib/runtime-env";
 
 const locale = Astro.currentLocale;
-if (PUBLIC_IMPRINT_NAME === "Name of the provider") {
-  console.warn("imprint: PUBLIC_IMPRINT_NAME/STREET/CITY are not set; the imprint shows placeholders (README.md, build-time values)");
-}
 ---
 
 <Site title={t(locale, "legal.imprint_title")} description="Who is responsible for tavrn.org and how to reach us.">
@@ -27,18 +19,18 @@ if (PUBLIC_IMPRINT_NAME === "Name of the provider") {
 
     <h2>Provider</h2>
     <address translate="no">
-      {PUBLIC_IMPRINT_NAME}<br />
-      {PUBLIC_IMPRINT_STREET}<br />
-      {PUBLIC_IMPRINT_CITY}<br />
-      {PUBLIC_IMPRINT_COUNTRY}
+      <Fragment set:html={runtimeEnv("TAVRN_IMPRINT_NAME")} /><br />
+      <Fragment set:html={runtimeEnv("TAVRN_IMPRINT_STREET")} /><br />
+      <Fragment set:html={runtimeEnv("TAVRN_IMPRINT_CITY")} /><br />
+      <Fragment set:html={runtimeEnv("TAVRN_IMPRINT_COUNTRY")} />
     </address>
 
     <h2>Contact</h2>
-    <p>E-mail: <a href={`mailto:${PUBLIC_CONTACT_EMAIL}`} translate="no">{PUBLIC_CONTACT_EMAIL}</a></p>
+    <p>E-mail: <Fragment set:html={contactLinkHtml('translate="no"')} /></p>
 
     <h2>Responsible for the content</h2>
     <p>
-      Responsible for the content according to § 18 (2) of the German Interstate Media Treaty (MStV): <span translate="no">{PUBLIC_IMPRINT_NAME}</span>,
+      Responsible for the content according to § 18 (2) of the German Interstate Media Treaty (MStV): <span translate="no" set:html={runtimeEnv("TAVRN_IMPRINT_NAME")} />,
       address as above.
     </p>
 

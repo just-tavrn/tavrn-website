@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 // Checks of the built site in dist/ (run `pnpm build` first; `just check` does): the JavaScript budget of the
-// landing page, the CSP hash list, and that pages reference nothing outside the origin.
+// landing page, the CSP hash list, that pages reference nothing outside the origin, and that only the two legal pages
+// carry the template actions Caddy fills in at request time.
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { gzipSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
 import { cspHash, inlineScripts } from "../scripts/csp-hashes.mjs";
+import { RUNTIME_VARS, type RuntimeVar, runtimeEnv } from "../src/lib/runtime-env";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const dist = join(root, "dist");
@@ -134,6 +136,27 @@ describe.skipIf(!built)("built site", () => {
       expect(html.match(/\son\w+="[^"]*"/g)?.join(" ") ?? "", page).not.toMatch(/localStorage|sessionStorage|document\.cookie/);
       for (const f of scriptGraph(html)) expect(read(f), `${page}: ${f}`).not.toMatch(/sessionStorage|document\.cookie/);
     }
+  });
+
+  it("puts the runtime template actions into the two legal pages only, and nothing else that Caddy would execute", () => {
+    // deploy/Caddyfile runs exactly these two pages through its templates handler (@legal): every "{{" in them must
+    // be one of the actions of src/lib/runtime-env.ts, and no other page may rely on one.
+    const legal: Record<string, readonly RuntimeVar[]> = {
+      "/legal/imprint/index.html": ["TAVRN_IMPRINT_NAME", "TAVRN_IMPRINT_STREET", "TAVRN_IMPRINT_CITY", "TAVRN_IMPRINT_COUNTRY", "TAVRN_CONTACT_EMAIL"],
+      "/legal/privacy/index.html": RUNTIME_VARS,
+    };
+    const actions = new Set<string>(RUNTIME_VARS.map((name) => runtimeEnv(name)));
+    for (const [page, names] of Object.entries(legal)) {
+      const html = read(page);
+      const found = html.match(/\{\{.*?\}\}/g) ?? [];
+      expect(html.split("{{").length - 1, page).toBe(found.length);
+      for (const action of found) expect(actions.has(action), `${page}: ${action}`).toBe(true);
+      expect(new Set(found), page).toEqual(new Set(names.map(runtimeEnv)));
+      // The contact address sits in a single-quoted href (the action's own quotes stay inside it).
+      expect(html, page).toContain(`href='mailto:${runtimeEnv("TAVRN_CONTACT_EMAIL")}'`);
+    }
+    const withActions = pages.filter((page) => read(page).includes('{{env "'));
+    expect(withActions.sort()).toEqual(Object.keys(legal).sort());
   });
 
   it("builds every route", () => {

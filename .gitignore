@@ -10,8 +10,6 @@ data/
 .env
 .env.*
 !.env.example
-# Local build arguments of the image (the imprint): never committed; template build-args.example
-.build-args
 *.pem
 *.key
 

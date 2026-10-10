@@ -3,8 +3,9 @@
 #
 # The tavrn website: the static Astro build served by Caddy (deploy/Caddyfile).
 #   docker build -f deploy/Dockerfile -t tavrn-website:dev .
-# Build arguments are the build-time values of the prerendered text (README.md, "Configuration"); the runtime values
-# (node URL, app URL, Uptime Kuma, delegation) are environment variables of the container.
+# The two build arguments are the build-time values of the prerendered text (README.md, "Configuration"); everything
+# else (node URL, app URL, Uptime Kuma, delegation, the imprint and contact details) comes from the environment of
+# the container, so the image itself is generic and holds no personal data.
 
 FROM node:24-alpine AS build
 WORKDIR /app
@@ -13,22 +14,9 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY . .
 ARG PUBLIC_SITE_URL=https://tavrn.org
-ARG PUBLIC_CONTACT_EMAIL=hello@tavrn.org
 ARG PUBLIC_GITHUB_ORG=just-tavrn
-ARG PUBLIC_NODE_URL=https://app.tavrn.org
-# Imprint / GDPR controller (personal data: never defaults in the repository; see README.md "Build-time values").
-ARG PUBLIC_IMPRINT_NAME="Name of the provider"
-ARG PUBLIC_IMPRINT_STREET="Street and number"
-ARG PUBLIC_IMPRINT_CITY="Postal code and city"
-ARG PUBLIC_IMPRINT_COUNTRY=Germany
 ENV PUBLIC_SITE_URL=$PUBLIC_SITE_URL \
-    PUBLIC_CONTACT_EMAIL=$PUBLIC_CONTACT_EMAIL \
     PUBLIC_GITHUB_ORG=$PUBLIC_GITHUB_ORG \
-    PUBLIC_NODE_URL=$PUBLIC_NODE_URL \
-    PUBLIC_IMPRINT_NAME=$PUBLIC_IMPRINT_NAME \
-    PUBLIC_IMPRINT_STREET=$PUBLIC_IMPRINT_STREET \
-    PUBLIC_IMPRINT_CITY=$PUBLIC_IMPRINT_CITY \
-    PUBLIC_IMPRINT_COUNTRY=$PUBLIC_IMPRINT_COUNTRY \
     ASTRO_TELEMETRY_DISABLED=1
 RUN pnpm build
 

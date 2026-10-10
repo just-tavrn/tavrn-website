@@ -1,9 +1,0 @@
-# Build-time values of the site (README.md "Build-time values"). Copy to .build-args (gitignored) for `just docker-build`.
-# The imprint is personal data: it is never committed, it only lives in the built image.
-PUBLIC_SITE_URL=https://tavrn.org
-PUBLIC_CONTACT_EMAIL=hello@tavrn.org
-PUBLIC_NODE_URL=https://app.tavrn.org
-PUBLIC_IMPRINT_NAME=Name of the provider
-PUBLIC_IMPRINT_STREET=Street and number
-PUBLIC_IMPRINT_CITY=Postal code and city
-PUBLIC_IMPRINT_COUNTRY=Germany
