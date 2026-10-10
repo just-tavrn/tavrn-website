@@ -1,0 +1,440 @@
+---
+// SPDX-License-Identifier: Apache-2.0
+// The release part of the download page, rendered in the browser at runtime: the script reads the site's own GitHub
+// proxies (/gh/releases/web, /gh/releases/node, /gh/repos/web; deploy/Caddyfile), so a new release shows without a
+// new build and the visitor's browser never contacts GitHub (the downloads themselves are plain links to GitHub).
+// src/lib/releases.ts picks what to show: a stable release, a beta (GitHub's pre-release flag), both as two tabs, or
+// "no release yet". The script fills the static OS cards (OsCard.astro) for the selected channel, the release line
+// under the page title (aria-live), the self-host card's image and the verifier's known checksums. Without JavaScript
+// a note links to the releases on GitHub. The card of the visitor's operating system moves to the front
+// (src/lib/os.ts); nothing is stored or sent.
+import { PUBLIC_GITHUB_ORG } from "astro:env/client";
+import ExternalLink from "@lucide/astro/icons/external-link";
+import Info from "@lucide/astro/icons/info";
+import Laptop from "@lucide/astro/icons/laptop";
+import Lock from "@lucide/astro/icons/lock";
+import Monitor from "@lucide/astro/icons/monitor";
+import Smartphone from "@lucide/astro/icons/smartphone";
+import SquareTerminal from "@lucide/astro/icons/square-terminal";
+import { escapeHtml, t } from "../../i18n";
+import OsCard from "./OsCard.astro";
+
+const locale = Astro.currentLocale;
+const releases = `https://github.com/${PUBLIC_GITHUB_ORG}/tavrn-web/releases`;
+// The strings the script needs (src/i18n/en.json, "download." prefix left out).
+const keys = [
+  "version", "released", "notes", "tab_stable", "tab_beta", "windows.alt_item", "verify.checksum_label",
+  "selfhost.node_stable", "selfhost.node_prerelease", "selfhost.node_edge", "selfhost.node_private",
+  "kind.nsis", "kind.msi", "kind.appimage", "kind.deb", "kind.dmg", "kind.app-tar", "kind.apk",
+  "arch.x64", "arch.arm64", "arch.x86", "arch.universal", "none",
+];
+const strings = Object.fromEntries(keys.map((k) => [k, t(locale, `download.${k}`)]));
+const external = `<span class="sr-only">${escapeHtml(t(locale, "common.external"))}</span>`;
+---
+
+<section
+  class="container-site pb-12"
+  aria-labelledby="apps-title"
+  data-releases
+  data-state="loading"
+  data-strings={JSON.stringify(strings)}
+  data-locale={locale ?? "en"}
+  data-org={PUBLIC_GITHUB_ORG}
+>
+  <h2 id="apps-title" class="sr-only">{t(locale, "download.apps_title")}</h2>
+
+  <div class="release-note mb-6" role="note" data-note-none hidden>
+    <Info class="mt-0.5 h-5 w-5 shrink-0 text-accent" aria-hidden="true" />
+    <div>
+      <p class="text-fg-1" data-load-error hidden>{t(locale, "download.load_error")}</p>
+      <p class="text-fg-1">
+        <a href={releases} class="link inline-flex min-h-11 items-center gap-1.5" rel="noopener">
+          {t(locale, "download.none_link")}
+          <ExternalLink class="h-3.5 w-3.5" aria-hidden="true" />
+          <span class="sr-only">{t(locale, "common.external")}</span>
+        </a>
+      </p>
+    </div>
+  </div>
+
+  <div class="release-note mb-6" role="note" data-note-private hidden>
+    <Lock class="mt-0.5 h-5 w-5 shrink-0 text-accent" aria-hidden="true" />
+    <div>
+      <p class="text-fg-1">{t(locale, "download.private")}</p>
+      <p>
+        <a href={releases} class="link inline-flex min-h-11 items-center gap-1.5" rel="noopener">
+          {t(locale, "download.private_link")}
+          <ExternalLink class="h-3.5 w-3.5" aria-hidden="true" />
+          <span class="sr-only">{t(locale, "common.external")}</span>
+        </a>
+      </p>
+    </div>
+  </div>
+
+  <div role="tablist" aria-label={t(locale, "download.channel_label")} class="tablist" data-tablist hidden>
+    <button type="button" role="tab" id="tab-stable" class="tab" aria-controls="release-panel" aria-selected="true" tabindex="0" data-channel="stable"></button>
+    <button
+      type="button"
+      role="tab"
+      id="tab-beta"
+      class="tab"
+      aria-controls="release-panel"
+      aria-selected="false"
+      aria-describedby="tab-beta-hint"
+      tabindex="-1"
+      title={t(locale, "download.tab_beta_hint")}
+      data-channel="beta"></button>
+  </div>
+  <span id="tab-beta-hint" hidden>{t(locale, "download.tab_beta_hint")}</span>
+
+  <div id="release-panel" data-panel>
+    <div class="release-note beta-note mb-6" data-beta-note hidden>
+      <Info class="mt-0.5 h-5 w-5 shrink-0 text-warn" aria-hidden="true" />
+      <div>
+        <p class="text-fg-1">{t(locale, "download.beta_note")}</p>
+        <p class="mt-1 text-fg-1" data-no-stable hidden>{t(locale, "download.no_stable")}</p>
+      </div>
+    </div>
+    <ul class="grid items-start gap-4 md:grid-cols-2" data-os-cards>
+      <OsCard card="windows"><Monitor slot="icon" class="h-5 w-5" /></OsCard>
+      <OsCard card="linux"><SquareTerminal slot="icon" class="h-5 w-5" /></OsCard>
+      <OsCard card="macos"><Laptop slot="icon" class="h-5 w-5" /></OsCard>
+      <OsCard card="mobile"><Smartphone slot="icon" class="h-5 w-5" /></OsCard>
+    </ul>
+    <p class="release-links mt-6 flex flex-wrap gap-x-6 gap-y-2" data-release-links>
+      <a class="link inline-flex min-h-11 items-center gap-1.5" rel="noopener" data-notes-link>
+        <span data-notes-text></span>
+        <ExternalLink class="h-3.5 w-3.5" aria-hidden="true" />
+        <span class="sr-only">{t(locale, "common.external")}</span>
+      </a>
+      <a href={releases} class="link inline-flex min-h-11 items-center gap-1.5" rel="noopener">
+        {t(locale, "download.all_releases")}
+        <ExternalLink class="h-3.5 w-3.5" aria-hidden="true" />
+        <span class="sr-only">{t(locale, "common.external")}</span>
+      </a>
+    </p>
+  </div>
+</section>
+
+<noscript>
+  <style is:inline>
+    [data-releases],
+    [data-release-line] {
+      display: none !important;
+    }
+  </style>
+  <section class="container-site pb-12" data-releases-nojs>
+    <div class="release-note" role="note">
+      <p class="text-fg-1">
+        {t(locale, "download.nojs")}{" "}
+        <a href={releases} class="link" rel="noopener" set:html={`${escapeHtml(t(locale, "download.nojs_link"))}${external}`} />
+      </p>
+    </div>
+  </section>
+</noscript>
+
+<style>
+  .release-note {
+    display: flex;
+    gap: 0.75rem;
+    max-width: 46rem;
+    border: 1px solid var(--color-line);
+    border-left: 3px solid var(--color-accent);
+    border-radius: var(--radius-md);
+    background: var(--color-bg-1);
+    padding: 0.875rem 1rem;
+  }
+  .beta-note {
+    border-left-color: var(--color-warn);
+  }
+  /* The links keep their place while the list loads (they are filled in then), and go with the cards. */
+  [data-state="loading"] .release-links {
+    visibility: hidden;
+  }
+  .release-links[hidden],
+  .release-note[hidden],
+  .tablist[hidden] {
+    display: none;
+  }
+  .tablist {
+    display: flex;
+    gap: 0.25rem;
+    margin-bottom: 1.5rem;
+    padding: 0.25rem;
+    overflow-x: auto;
+    border: 1px solid var(--color-line);
+    border-radius: 999px;
+    background: var(--color-bg-1);
+    width: fit-content;
+    max-width: 100%;
+    scrollbar-width: none;
+  }
+  .tab {
+    flex: none;
+    min-height: 2.75rem;
+    padding: 0 1.125rem;
+    border-radius: 999px;
+    color: var(--color-fg-1);
+    font-size: 0.9375rem;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .tab:hover {
+    color: var(--color-fg-0);
+    background: var(--color-bg-3);
+  }
+  .tab[aria-selected="true"] {
+    background: var(--color-accent);
+    color: var(--color-accent-text);
+  }
+  .tab:focus-visible {
+    outline-offset: -2px;
+  }
+</style>
+
+<script>
+  import { fill } from "../../lib/node-status";
+  import { detectOs } from "../../lib/os";
+  import { type DownloadAsset, type DownloadView, downloadView, type Fetched, formatSize, type WebRelease } from "../../lib/releases";
+  import { buildIndex } from "../../lib/verify";
+
+  type Channel = "stable" | "beta";
+  const TIMEOUT_MS = 15_000;
+
+  const root = document.querySelector<HTMLElement>("[data-releases]");
+  if (root) {
+    const strings = JSON.parse(root.dataset.strings ?? "{}") as Record<string, string>;
+    const locale = root.dataset.locale ?? "en";
+    const org = root.dataset.org ?? "just-tavrn";
+    const s = (key: string, params?: Record<string, string>) => fill(strings[key] ?? key, params);
+    const $ = <T extends HTMLElement = HTMLElement>(selector: string, scope: ParentNode = root) => scope.querySelector<T>(selector);
+    const list = $("[data-os-cards]")!;
+    const cards = [...list.querySelectorAll<HTMLElement>("[data-os-card]")];
+    const tabs = [...root.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+    const panel = $("[data-panel]")!;
+    const line = document.querySelector<HTMLElement>("[data-release-line]");
+    const verifier = document.querySelector<HTMLElement>("[data-verifier]");
+
+    // The visitor's system first. Reads only what every browser exposes anyway; nothing is stored or sent.
+    const nav = navigator as Navigator & { userAgentData?: { platform?: string } };
+    const os = detectOs({ uaPlatform: nav.userAgentData?.platform, platform: nav.platform, userAgent: nav.userAgent });
+    const recommended = cards.find((c) => c.dataset.osCard === (os === "android" || os === "ios" ? "mobile" : os));
+    if (recommended) {
+      list.prepend(recommended);
+      recommended.dataset.recommended = "true";
+      $("[data-recommended-badge]", recommended)?.removeAttribute("hidden");
+    }
+
+    async function get(path: string): Promise<Fetched> {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+      try {
+        // The browser may use its cached copy: the server marks the answers cacheable for five minutes.
+        const response = await fetch(path, {
+          signal: controller.signal,
+          credentials: "omit",
+          referrerPolicy: "no-referrer",
+          headers: { Accept: "application/json" },
+        });
+        if (!response.ok) return { ok: false, status: response.status };
+        return { ok: true, body: await response.json() };
+      } catch {
+        return { ok: false, status: 0 };
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
+    const clone = (scope: ParentNode, selector: string) =>
+      ($<HTMLTemplateElement>(selector, scope)!.content.firstElementChild!.cloneNode(true) as HTMLElement);
+    const setText = (scope: ParentNode, selector: string, text: string) => {
+      const node = $(selector, scope);
+      if (node) node.textContent = text;
+    };
+    const show = (node: HTMLElement | null, visible: boolean) => {
+      if (node) node.hidden = !visible;
+    };
+    const describe = (a: DownloadAsset) => [a.arch ? s(`arch.${a.arch}`) : "", formatSize(a.size, locale)].filter(Boolean).join(" · ");
+    const kind = (a: DownloadAsset) => s(`kind.${a.kind}`);
+
+    /** "Verify the download": the files with GitHub's SHA-256, the command for this system, the notes that apply. */
+    function fillVerify(card: HTMLElement, assets: DownloadAsset[]): void {
+      const details = $<HTMLDetailsElement>("[data-verify]", card)!;
+      show(details, assets.length > 0);
+      if (assets.length === 0) return;
+      $("[data-sums]", details)!.replaceChildren(
+        ...assets.map((a) => {
+          const row = clone(details, "[data-tpl-sum]");
+          setText(row, "dt code", a.name);
+          const hash = $("dd code", row)!;
+          if (a.checksum) {
+            hash.textContent = a.checksum;
+            hash.setAttribute("aria-label", s("verify.checksum_label", { name: a.name }));
+          } else {
+            hash.remove();
+            show($("dd span", row), true);
+          }
+          return row;
+        }),
+      );
+      const first = assets[0]!.name;
+      const command: Record<string, string> = {
+        windows: `Get-FileHash .\\${first} -Algorithm SHA256`,
+        linux: `sha256sum ${first}`,
+        macos: `shasum -a 256 ${first}`,
+        android: `sha256sum ${first}`,
+      };
+      setText(details, "[data-command]", command[details.dataset.system ?? "linux"] ?? "");
+      show($("[data-signature-note]", details), assets.some((a) => a.signature));
+      show($("[data-electron-note]", details), assets.some((a) => a.shell === "electron"));
+      const appImage = assets.find((a) => a.kind === "appimage");
+      show($("[data-chmod]", details), !!appImage);
+      if (appImage) setText(details, "[data-chmod] code", `chmod +x ${appImage.name}`);
+    }
+
+    /** One OS card for a release: the installers as download buttons (a plain list while private) or "coming later". */
+    function fillCard(card: HTMLElement, release: WebRelease | null, beta: boolean, isPrivate: boolean): void {
+      const key = card.dataset.osCard;
+      const oses = key === "mobile" ? ["android", "ios"] : [key];
+      const assets = (release?.assets ?? []).filter((a) => oses.includes(a.os));
+      // Windows: the Tauri installers are the app; an Electron build (for WebView2 trouble) is the alternative.
+      const main = key === "windows" ? assets.filter((a) => a.shell === "tauri") : assets;
+      const alternatives = key === "windows" ? assets.filter((a) => a.shell === "electron") : [];
+      const items = $("[data-dl-list]", card)!;
+      items.replaceChildren(
+        ...main.map((a, i) => {
+          const item = clone(card, isPrivate ? "[data-tpl-file]" : "[data-tpl-download]");
+          const link = $<HTMLAnchorElement>("a", item);
+          if (link) {
+            link.href = a.url;
+            link.classList.add(i === 0 ? "btn-primary" : "btn-secondary");
+          }
+          setText(item, ".dl-label", kind(a));
+          setText(item, ".dl-meta", describe(a));
+          return item;
+        }),
+      );
+      show(items, main.length > 0);
+      show($("[data-later]", card), main.length === 0);
+      show($("[data-linux-note]", card), main.length > 0);
+      show($("[data-beta-badge]", card), beta && assets.length > 0);
+      const alt = $<HTMLDetailsElement>("[data-alt-build]", card);
+      if (alt) {
+        show(alt, alternatives.length > 0);
+        $("[data-alt-list]", alt)!.replaceChildren(
+          ...alternatives.map((a) => {
+            const item = clone(card, "[data-tpl-alt]");
+            const label = s("windows.alt_item", { kind: kind(a) });
+            const link = $<HTMLAnchorElement>("a", item)!;
+            if (isPrivate) {
+              link.remove();
+              setText(item, ".dl-alt-label", label);
+            } else {
+              link.href = a.url;
+              link.textContent = label;
+              $(".dl-alt-label", item)?.remove();
+            }
+            setText(item, ".text-fg-2", ` · ${describe(a)}`);
+            return item;
+          }),
+        );
+      }
+      fillVerify(card, [...main, ...alternatives]);
+    }
+
+    /** "Version 0.3.0 · released 1 November 2026" under the page title (an aria-live region). */
+    function releaseLine(release: WebRelease): void {
+      if (!line) return;
+      const parts: Node[] = [document.createTextNode(s("version", { version: release.version }))];
+      if (release.publishedAt) {
+        const time = document.createElement("time");
+        time.dateTime = release.publishedAt;
+        const date = new Intl.DateTimeFormat(locale, { dateStyle: "long", timeZone: "UTC" }).format(new Date(release.publishedAt));
+        time.textContent = s("released", { date });
+        parts.push(document.createTextNode(" · "), time);
+      }
+      line.replaceChildren(...parts);
+    }
+
+    let view: DownloadView;
+
+    /** Shows one channel: the release line, the cards, the release notes link and the verifier's known checksums. */
+    function select(channel: Channel, focus = false): void {
+      const release = channel === "beta" ? view.beta : view.stable;
+      if (!release) return;
+      if (view.mode === "both") {
+        for (const tab of tabs) {
+          const selected = tab.dataset.channel === channel;
+          tab.setAttribute("aria-selected", String(selected));
+          tab.tabIndex = selected ? 0 : -1;
+          if (selected && focus) tab.focus();
+        }
+        panel.setAttribute("aria-labelledby", `tab-${channel}`);
+      }
+      show($("[data-beta-note]"), channel === "beta");
+      show($("[data-no-stable]"), view.mode === "beta");
+      for (const card of cards) fillCard(card, release, channel === "beta", view.private);
+      releaseLine(release);
+      const notes = $<HTMLAnchorElement>("[data-notes-link]")!;
+      notes.href = release.notes_url;
+      setText(notes, "[data-notes-text]", s("notes", { version: release.version }));
+      if (verifier) {
+        verifier.dataset.known = JSON.stringify(buildIndex(release.assets));
+        verifier.dispatchEvent(new Event("known-change"));
+      }
+    }
+
+    /** The self-host card: the image of the newest node release (stable first), else a pre-release, else edge. */
+    function nodeCard(): void {
+      const image = document.querySelector<HTMLElement>("[data-node-image]");
+      const note = document.querySelector<HTMLElement>("[data-node-note]");
+      if (image) image.textContent = view.node.image;
+      if (note) {
+        const text = s(`selfhost.node_${view.node.channel}`, { version: view.node.version ?? "" });
+        note.textContent = view.private ? `${text} ${s("selfhost.node_private")}` : text;
+      }
+    }
+
+    function render(): void {
+      root!.dataset.state = view.mode === "none" ? "none" : "ready";
+      nodeCard();
+      if (view.mode === "none") {
+        show(list, false);
+        show($("[data-release-links]"), false);
+        show($("[data-note-none]"), true);
+        show($("[data-load-error]"), view.loadError);
+        if (line) line.textContent = s("none");
+        return;
+      }
+      show($("[data-note-private]"), view.private);
+      if (view.mode === "both") {
+        setText(root!, "#tab-stable", s("tab_stable", { version: view.stable!.version }));
+        setText(root!, "#tab-beta", s("tab_beta", { version: view.beta!.version }));
+        show($("[data-tablist]"), true);
+        panel.setAttribute("role", "tabpanel");
+        tabs.forEach((tab, i) => {
+          const channel = tab.dataset.channel as Channel;
+          tab.addEventListener("click", () => select(channel));
+          tab.addEventListener("keydown", (e) => {
+            const last = tabs.length - 1;
+            const next = { ArrowRight: i === last ? 0 : i + 1, ArrowLeft: i === 0 ? last : i - 1, Home: 0, End: last }[e.key];
+            if (next === undefined) return;
+            e.preventDefault();
+            select(tabs[next]!.dataset.channel as Channel, true);
+          });
+        });
+        // A link to /download#beta opens the beta tab (nothing is remembered).
+        addEventListener("hashchange", () => location.hash === "#beta" && select("beta"));
+        select(location.hash === "#beta" ? "beta" : "stable");
+      } else {
+        select(view.mode === "beta" ? "beta" : "stable");
+      }
+    }
+
+    void Promise.all([get("/gh/releases/web"), get("/gh/releases/node"), get("/gh/repos/web")]).then(([web, node, repo]) => {
+      view = downloadView({ web, node, repo }, org);
+      render();
+    });
+  }
+</script>

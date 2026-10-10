@@ -6,7 +6,6 @@ dist/
 
 # Local data, environment and key files: never part of the repository
 data/
-!src/data/
 .env
 .env.*
 !.env.example

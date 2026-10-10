@@ -57,7 +57,8 @@ for (const route of routes.filter((r) => !r.path.startsWith("/docs"))) {
       for (let node = walker.nextNode(); node; node = walker.nextNode()) {
         const text = node.textContent ?? "";
         const parent = node.parentElement;
-        if (!parent || parent.closest("script, style, template")) continue;
+        // <noscript> is raw text while JavaScript runs (the no-JS case is the page's own test in download.spec.ts).
+        if (!parent || parent.closest("script, style, template, noscript")) continue;
         if (/\btavrn\b/i.test(text) && !parent.closest('[translate="no"]')) found.push(text.trim().slice(0, 80));
         if (/\bTavrn\b|\bTAVRN\b/.test(text) && !parent.closest('[translate="no"]')) found.push(`capitalized: ${text.trim().slice(0, 80)}`);
       }
