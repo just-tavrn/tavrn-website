@@ -61,18 +61,17 @@ caddy-validate:
 gh-proxy-test:
     deploy/test/gh-proxy.sh
 
-# The container image (deploy/Dockerfile)
-# Build arguments come from .build-args (gitignored; template build-args.example): the imprint and other build-time values.
+# The imprint and contact details Caddy fills into the two legal pages at request time, in Docker (port 18092;
+# uses dist/ when built, else fixtures)
+legal-templates-test:
+    deploy/test/legal-templates.sh
+
+# Both Docker tests of the Caddyfile
+caddy-test: gh-proxy-test legal-templates-test
+
+# The container image (deploy/Dockerfile); generic: the imprint and contact details are runtime variables
 docker-build tag="tavrn-website:dev":
-    #!/usr/bin/env sh
-    set -eu
-    set --
-    if [ -f .build-args ]; then
-      while IFS= read -r line || [ -n "$line" ]; do
-        case "$line" in ""|\#*) ;; *) set -- "$@" --build-arg "$line" ;; esac
-      done < .build-args
-    fi
-    docker build "$@" -f deploy/Dockerfile -t {{tag}} .
+    docker build -f deploy/Dockerfile -t {{tag}} .
 
 # Run the image locally on port 18080 with the delegation document switched on
 docker-run tag="tavrn-website:dev":

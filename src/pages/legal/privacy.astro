@@ -2,20 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 // Privacy policy of the website. Plain language; it describes the deployment in deploy/ (Caddy without IP
 // logging, Cloudflare in front, no cookies or storage, the status check talking to the official node directly).
-import {
-  PUBLIC_CONTACT_EMAIL,
-  PUBLIC_IMPRINT_CITY,
-  PUBLIC_IMPRINT_COUNTRY,
-  PUBLIC_IMPRINT_NAME,
-  PUBLIC_IMPRINT_STREET,
-  PUBLIC_NODE_URL,
-} from "astro:env/client";
+// The controller's name, address and e-mail and the node's host are runtime variables of the container, filled in
+// by Caddy at request time (src/lib/runtime-env.ts).
 import Brand from "../../components/Brand.astro";
 import Site from "../../layouts/Site.astro";
 import { localePath, t } from "../../i18n";
+import { contactLinkHtml, runtimeEnv } from "../../lib/runtime-env";
 
 const locale = Astro.currentLocale;
-const nodeHost = new URL(PUBLIC_NODE_URL).host;
 ---
 
 <Site title={t(locale, "legal.privacy_title")} description="What happens with your data when you visit tavrn.org: very little.">
@@ -35,11 +29,11 @@ const nodeHost = new URL(PUBLIC_NODE_URL).host;
     <h2>Who is responsible</h2>
     <p>The controller under the General Data Protection Regulation (GDPR) is:</p>
     <address translate="no">
-      {PUBLIC_IMPRINT_NAME}<br />
-      {PUBLIC_IMPRINT_STREET}<br />
-      {PUBLIC_IMPRINT_CITY}<br />
-      {PUBLIC_IMPRINT_COUNTRY}<br />
-      E-mail: <a href={`mailto:${PUBLIC_CONTACT_EMAIL}`}>{PUBLIC_CONTACT_EMAIL}</a>
+      <Fragment set:html={runtimeEnv("TAVRN_IMPRINT_NAME")} /><br />
+      <Fragment set:html={runtimeEnv("TAVRN_IMPRINT_STREET")} /><br />
+      <Fragment set:html={runtimeEnv("TAVRN_IMPRINT_CITY")} /><br />
+      <Fragment set:html={runtimeEnv("TAVRN_IMPRINT_COUNTRY")} /><br />
+      E-mail: <Fragment set:html={contactLinkHtml()} />
     </address>
 
     <h2>Hosting and server logs</h2>
@@ -78,7 +72,7 @@ const nodeHost = new URL(PUBLIC_NODE_URL).host;
       The <a href={localePath(locale, "/status")}>status page</a> shows whether the official <Brand /> node is working, and
       a small indicator in the header of every page shows whether it is online. To find out, your browser reads a small
       configuration file from this website and then connects <strong>directly</strong> to the node at
-      <code translate="no">{nodeHost}</code> (the exact address is shown on the status page) and asks for its public
+      <code translate="no" set:html={runtimeEnv("TAVRN_NODE_HOST")} /> (the exact address is shown on the status page) and asks for its public
       status: once on every page you open, and on the status page every minute while it is open. As with every connection, the node receives your IP address and the request
       headers of your browser; nothing else is sent. The node is run by the same controller named above.
     </p>

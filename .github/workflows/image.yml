@@ -3,7 +3,8 @@
 # The website's container image (deploy/Dockerfile) through the organization's reusable workflow: built on every
 # push to main and on v* tags and pushed to ghcr.io/just-tavrn/tavrn-website. A release of tavrn-web sends a
 # repository_dispatch of type "release-published", so the download page is rebuilt with the new assets.
-# Gated by CI_ENABLED.
+# The image is generic: no build arguments (their defaults are the official site's), and the imprint and contact
+# details are runtime variables of the container (README.md, "Configuration"). Gated by CI_ENABLED.
 name: Image
 
 on:
@@ -34,13 +35,6 @@ jobs:
       image-name: tavrn-website
       # The docs are synced from sources/ (private submodules until the project is public).
       submodules: "true"
-      build-args: |
-        PUBLIC_CONTACT_EMAIL=${{ vars.PUBLIC_CONTACT_EMAIL || 'hello@tavrn.org' }}
-        PUBLIC_NODE_URL=${{ vars.PUBLIC_NODE_URL || 'https://app.tavrn.org' }}
-        PUBLIC_IMPRINT_NAME=${{ vars.PUBLIC_IMPRINT_NAME || 'Name of the provider' }}
-        PUBLIC_IMPRINT_STREET=${{ vars.PUBLIC_IMPRINT_STREET || 'Street and number' }}
-        PUBLIC_IMPRINT_CITY=${{ vars.PUBLIC_IMPRINT_CITY || 'Postal code and city' }}
-        PUBLIC_IMPRINT_COUNTRY=${{ vars.PUBLIC_IMPRINT_COUNTRY || 'Germany' }}
       push: true
     secrets:
       READ_TOKEN: ${{ secrets.TAVRN_READ_PAT }}

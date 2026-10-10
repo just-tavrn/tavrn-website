@@ -13,38 +13,41 @@ Browser ──HTTPS──> Cloudflare (proxy, cache) ──HTTPS──> Nginx Pr
 |---|---|
 | `Dockerfile` | Multi-stage build: `pnpm build` on `node:24-alpine`, then `caddy:2-alpine` with `dist/` at `/srv`, unprivileged |
 | `Caddyfile` | Headers (CSP, HSTS, …), cache rules, clean URLs, 404 page, `/app`, `/config.json`, `/.well-known/tavrn`, the `/uptime/` and `/gh/issues` proxies, IP-free access log |
-| `entrypoint.sh` | Normalizes the URLs, derives `TAVRN_NODE_WS_URL`, checks `GITHUB_ORG` and `GITHUB_READ_TOKEN`, then starts Caddy |
+| `entrypoint.sh` | Normalizes the URLs, derives `TAVRN_NODE_WS_URL` and `TAVRN_NODE_HOST`, checks `GITHUB_ORG` and `GITHUB_READ_TOKEN`, HTML-escapes the imprint and contact details, then starts Caddy |
 | `test/gh-proxy.sh` | Checks the `/gh/issues` proxy in Docker against a fake GitHub API (`just gh-proxy-test`) |
+| `test/legal-templates.sh` | Checks in Docker that the legal pages show the imprint and contact details of the environment, escaped, and that no other page is a template (`just legal-templates-test`) |
 | `docker-compose.yml` | The stack for Portainer: the `website` service and an optional, commented Uptime Kuma |
 | `.env.example` | Every runtime variable with its default and meaning |
 
 ## Build and publish
 
 ```sh
-docker build -f deploy/Dockerfile -t ghcr.io/just-tavrn/tavrn-website:latest \
-  --build-arg PUBLIC_CONTACT_EMAIL=hello@tavrn.org .
+docker build -f deploy/Dockerfile -t ghcr.io/just-tavrn/tavrn-website:latest .
 docker push ghcr.io/just-tavrn/tavrn-website:latest
 ```
 
-The build arguments `PUBLIC_SITE_URL`, `PUBLIC_CONTACT_EMAIL`, `PUBLIC_GITHUB_ORG`, `PUBLIC_NODE_URL` and the imprint
-(`PUBLIC_IMPRINT_NAME`, `PUBLIC_IMPRINT_STREET`, `PUBLIC_IMPRINT_CITY`, `PUBLIC_IMPRINT_COUNTRY`; personal data, kept
-out of the repository, locally in `.build-args`) set the
-values that are written into the pages (README.md, "Configuration"); everything in `.env.example` is read when the
-container starts. The CI workflow `.github/workflows/image.yml` builds the same image as
-`ghcr.io/just-tavrn/tavrn-website` on `main` and on `v*` tags.
+The image is generic: the two build arguments `PUBLIC_SITE_URL` and `PUBLIC_GITHUB_ORG` default to the official
+site's values (README.md, "Configuration"), and everything else, including the imprint and the contact address,
+is read from `.env.example`'s variables when the container starts. The CI workflow `.github/workflows/image.yml`
+builds the same image as `ghcr.io/just-tavrn/tavrn-website` on `main` and on `v*` tags.
 
 ## Portainer stack
 
 1. Create the stack from `docker-compose.yml`, with the variables of `.env.example` as stack environment.
-2. Attach it to the Docker network NPM uses (the compose file expects an external network named `proxy`; rename it
+2. Set the imprint: `TAVRN_IMPRINT_NAME`, `TAVRN_IMPRINT_STREET`, `TAVRN_IMPRINT_CITY`, `TAVRN_IMPRINT_COUNTRY`
+   and `TAVRN_CONTACT_EMAIL` (personal data: only in the stack's environment, never in a repository). Caddy fills
+   them into `/legal/imprint/` and `/legal/privacy/` on every request (the `templates` handler for exactly these two
+   pages), so a change needs only a restart of the container, no new image. Until the first three are set, the
+   pages show visible placeholders and the container logs a warning at start.
+3. Attach it to the Docker network NPM uses (the compose file expects an external network named `proxy`; rename it
    to yours). No port is published: NPM reaches the container as `website:8080`.
-3. Optional: uncomment `uptime-kuma`, create a public status page in it, and set `UPTIME_KUMA_URL`
+4. Optional: uncomment `uptime-kuma`, create a public status page in it, and set `UPTIME_KUMA_URL`
    (`http://uptime-kuma:3001`) and `UPTIME_KUMA_PAGE` (the page's slug). The status page then shows the uptime
    history. The browser never talks to Kuma: the website container forwards exactly the two read-only API endpoints
    of that page (`/uptime/api/status-page/<slug>` and `…/heartbeat/<slug>`) without the visitor's IP address, user
    agent or cookies, because Kuma sends no CORS headers outside its development mode. Kuma needs a proxy host in NPM
    only if its own page should be public; with an `https://` URL in `UPTIME_KUMA_URL` the status page links to it.
-4. Optional: set `GITHUB_READ_TOKEN` for the known-issues page (`/issues`). Create a **fine-grained personal access
+5. Optional: set `GITHUB_READ_TOKEN` for the known-issues page (`/issues`). Create a **fine-grained personal access
    token** (resource owner: the organization; repository access: all repositories; permissions: **Issues:
    read-only**, Metadata: read-only comes with it) or use a GitHub App installation token with the same read-only
    permission. Nothing else. The token also makes the issues of **private** repositories visible on the public page,
@@ -95,6 +98,7 @@ host, or keep them short, so the privacy policy ("our server does not log IP add
 ```sh
 curl -sI https://tavrn.org/ | grep -i -E 'content-security-policy|strict-transport|cache-control'
 curl -s https://tavrn.org/config.json
+curl -s https://tavrn.org/legal/imprint/ | grep -o '<address.*</address>'   # the values of TAVRN_IMPRINT_*, no {{env …}}
 curl -sI https://tavrn.org/app | grep -i location
 curl -s https://tavrn.org/.well-known/tavrn     # 404 unless TAVRN_WELLKNOWN is on or proxy
 curl -sI https://tavrn.org/gh/issues | grep -i -E '^HTTP|cache-control|cf-cache-status'   # 404 without GITHUB_READ_TOKEN

@@ -62,19 +62,12 @@ export default defineConfig({
     routing: { prefixDefaultLocale: false },
   },
   // Build-time values for the prerendered text (README.md, "Configuration"). The runtime values of the container
-  // (node URL, app URL, Uptime Kuma) are served by Caddy as /config.json.
+  // (node URL, app URL, Uptime Kuma) are served by Caddy as /config.json; the imprint and contact details are filled
+  // into the two legal pages by Caddy at request time (src/lib/runtime-env.ts).
   env: {
     schema: {
       PUBLIC_SITE_URL: envField.string({ context: "client", access: "public", default: "https://tavrn.org" }),
-      PUBLIC_CONTACT_EMAIL: envField.string({ context: "client", access: "public", default: "hello@tavrn.org" }),
       PUBLIC_GITHUB_ORG: envField.string({ context: "client", access: "public", default: "just-tavrn" }),
-      PUBLIC_NODE_URL: envField.string({ context: "client", access: "public", default: "https://app.tavrn.org" }),
-      // Provider named in the imprint and as the GDPR controller. Not in the repository: set at build time
-      // (build arguments of the image, repository variables in CI). The defaults are visible placeholders.
-      PUBLIC_IMPRINT_NAME: envField.string({ context: "client", access: "public", default: "Name of the provider" }),
-      PUBLIC_IMPRINT_STREET: envField.string({ context: "client", access: "public", default: "Street and number" }),
-      PUBLIC_IMPRINT_CITY: envField.string({ context: "client", access: "public", default: "Postal code and city" }),
-      PUBLIC_IMPRINT_COUNTRY: envField.string({ context: "client", access: "public", default: "Germany" }),
     },
   },
   markdown: {

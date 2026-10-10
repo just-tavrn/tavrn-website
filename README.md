@@ -40,8 +40,9 @@ just check        # everything below, must be green before a commit
 ```
 
 `just check` runs `astro check`, the build, Vitest (unit tests, the checks of `dist/` and its link checker), the SPDX and license
-checks, `scripts/publish-check.sh`, `caddy validate` on `deploy/Caddyfile` and the Playwright suite. Playwright runs
-only Chromium and the Android phone emulation with two workers:
+checks, `scripts/publish-check.sh`, `caddy validate` on `deploy/Caddyfile` and the Playwright suite. The two Docker
+tests of the Caddyfile (`just caddy-test`: the `/gh/issues` proxy and the legal pages' runtime values) run
+separately. Playwright runs only Chromium and the Android phone emulation with two workers:
 
 ```sh
 just e2e          # = playwright test -c e2e/playwright.config.ts --project chromium --project mobile-android --workers=2
@@ -178,21 +179,14 @@ Two groups of values: those written into the pages at **build time**, and those 
 
 ### Build time (`astro:env`, public)
 
-Set them as environment variables for `pnpm build`, or as `--build-arg` of the image. For local image builds put
-them into `.build-args` (one `NAME=value` per line, gitignored; template `build-args.example`): `just docker-build`
-passes every line as a build argument. In CI they come from repository variables of the same names. The build
-prints a warning when the imprint placeholders are still in place.
+Set them as environment variables for `pnpm build`, or as `--build-arg` of the image. Their defaults are the
+official site's, so the image CI builds needs none and is generic: nothing operator-specific or personal is baked
+in.
 
 | Variable | Default | Used for |
 |---|---|---|
 | `PUBLIC_SITE_URL` | `https://tavrn.org` | Canonical URLs, Open Graph, sitemap |
-| `PUBLIC_CONTACT_EMAIL` | `hello@tavrn.org` | Imprint and privacy policy |
-| `PUBLIC_IMPRINT_NAME` | `Name of the provider` | Provider in the imprint and GDPR controller (personal data: set at build time, never committed) |
-| `PUBLIC_IMPRINT_STREET` | `Street and number` | Provider's street |
-| `PUBLIC_IMPRINT_CITY` | `Postal code and city` | Provider's postal code and city |
-| `PUBLIC_IMPRINT_COUNTRY` | `Germany` | Provider's country |
 | `PUBLIC_GITHUB_ORG` | `just-tavrn` | Links to GitHub (repositories, discussions, security policy) |
-| `PUBLIC_NODE_URL` | `https://app.tavrn.org` | The official node as named in the privacy policy |
 
 ### Runtime (container environment)
 
@@ -207,10 +201,20 @@ prints a warning when the imprint placeholders are still in place.
 | `UPTIME_KUMA_PAGE` | empty | Slug of Uptime Kuma's public status page |
 | `GITHUB_READ_TOKEN` | empty | Optional read-only GitHub token (Issues: read-only) for the known-issues page: the container forwards `GET /gh/issues` to GitHub's issue search with it, without anything from the visitor; empty: `/gh/issues` is 404 and the page links to GitHub |
 | `GITHUB_ORG` | `just-tavrn` | The organization whose open issues `/gh/issues` returns (keep it equal to `PUBLIC_GITHUB_ORG`) |
+| `TAVRN_IMPRINT_NAME` | `Name of the provider` | Provider in the imprint and GDPR controller in the privacy policy (personal data: set it in the stack, never in the repository) |
+| `TAVRN_IMPRINT_STREET` | `Street and number` | Provider's street |
+| `TAVRN_IMPRINT_CITY` | `Postal code and city` | Provider's postal code and city |
+| `TAVRN_IMPRINT_COUNTRY` | `Germany` | Provider's country |
+| `TAVRN_CONTACT_EMAIL` | `hello@tavrn.org` | Contact address in the imprint and the privacy policy (a plain address; anything else falls back to the default) |
 
 The defaults point at the current test node until the official node moves to its own host. The container serves
 these values as `GET /config.json` (`appUrl`, `nodeUrl`, `nodeDomain`, `uptimeKumaUrl`, `uptimeKumaPage`), so the
-status page and the live dot read them at runtime. Each variable is explained in
+status page and the live dot read them at runtime. The imprint and the privacy policy are the only templates: they
+are built with Go template actions (`{{env "TAVRN_IMPRINT_NAME"}}`, …; `src/lib/runtime-env.ts`) that Caddy's
+`templates` handler replaces with these values at request time, the privacy policy also naming the host of
+`TAVRN_NODE_URL`. `deploy/entrypoint.sh` strips line breaks and HTML-escapes the values first and logs a warning
+while the imprint placeholders are in use; `just legal-templates-test` checks the rendering in Docker. Without Caddy
+(`pnpm dev`, `pnpm preview`) the pages show the actions as they are. Each variable is explained in
 [`deploy/.env.example`](deploy/.env.example).
 
 ## The container image

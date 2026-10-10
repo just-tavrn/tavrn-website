@@ -15,6 +15,10 @@
 #   UPTIME_KUMA_PAGE    slug of its public status page
 #   GITHUB_READ_TOKEN   read-only GitHub token for the known-issues list (/gh/issues; empty: that path is 404)
 #   GITHUB_ORG          the GitHub organization whose open issues the list shows
+#   TAVRN_IMPRINT_NAME, TAVRN_IMPRINT_STREET, TAVRN_IMPRINT_CITY, TAVRN_IMPRINT_COUNTRY, TAVRN_CONTACT_EMAIL
+#                       the provider in the imprint and the controller in the privacy policy (filled into the two
+#                       legal pages at request time, see @legal below; entrypoint.sh escapes them and sets
+#                       TAVRN_NODE_HOST, the host of TAVRN_NODE_URL)
 
 {
 	admin off
@@ -74,6 +78,17 @@
 	header @immutable Cache-Control "public, max-age=31536000, immutable"
 	header @html Cache-Control "no-cache"
 	header @asset Cache-Control "public, max-age=3600"
+
+	# The imprint and the privacy policy carry Go template actions such as {{env "TAVRN_IMPRINT_NAME"}} where the
+	# provider's name, address and e-mail and the node's host belong (src/lib/runtime-env.ts); the templates handler
+	# replaces them with the environment's values at request time, so the image holds no personal data. Only these two
+	# pages are templates: every other file, HTML or not, is served exactly as built, whatever it contains. The paths
+	# are the request's (templates runs before the try_files below maps them to index.html). The values are
+	# HTML-escaped by entrypoint.sh, since Caddy's templates do not escape.
+	@legal path /legal/imprint /legal/imprint/ /legal/imprint/index.html /legal/privacy /legal/privacy/ /legal/privacy/index.html
+	templates @legal {
+		mime text/html
+	}
 
 	# "Open the web app": the web app of the official node.
 	@app path /app /app/
