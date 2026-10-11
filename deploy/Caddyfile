@@ -88,7 +88,7 @@
 		# Uptime Kuma is not listed: its history comes through this server (/uptime/ below).
 		# Scripts: our bundled files, the hashes of the few inline scripts Starlight renders (written at build time by
 		# scripts/csp-hashes.mjs) and WebAssembly for the Pagefind search. Inline style attributes come from Starlight.
-		Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' {file./etc/caddy/csp-script-hashes.txt}; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' {$TAVRN_NODE_URL:https://tavrn.swsp.eu}; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' {file./etc/caddy/csp-script-hashes.txt}; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' {$TAVRN_NODE_URL:https://app.tavrn.org}; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
 		Referrer-Policy no-referrer
 		X-Content-Type-Options nosniff
 		Permissions-Policy "camera=(), microphone=(), geolocation=()"
@@ -120,13 +120,13 @@
 
 	# "Open the web app": the web app of the official node.
 	@app path /app /app/
-	redir @app {$TAVRN_APP_URL:https://tavrn.swsp.eu} 302
+	redir @app {$TAVRN_APP_URL:https://app.tavrn.org} 302
 
 	# Runtime configuration for the status page and the live dot of the "Status" link.
 	handle /config.json {
 		header Content-Type application/json
 		header Cache-Control no-cache
-		respond `{"appUrl":"{$TAVRN_APP_URL:https://tavrn.swsp.eu}","nodeUrl":"{$TAVRN_NODE_URL:https://tavrn.swsp.eu}","nodeDomain":"{$TAVRN_NODE_DOMAIN:tavrn.org}","uptimeKumaUrl":"{$UPTIME_KUMA_URL:}","uptimeKumaPage":"{$UPTIME_KUMA_PAGE:}"}` 200
+		respond `{"appUrl":"{$TAVRN_APP_URL:https://app.tavrn.org}","nodeUrl":"{$TAVRN_NODE_URL:https://app.tavrn.org}","nodeDomain":"{$TAVRN_NODE_DOMAIN:tavrn.org}","uptimeKumaUrl":"{$UPTIME_KUMA_URL:}","uptimeKumaPage":"{$UPTIME_KUMA_PAGE:}"}` 200
 	}
 
 	# Uptime history for the status page: Uptime Kuma's public status-page API sends no CORS headers outside its
@@ -217,10 +217,10 @@
 			header Content-Type application/json
 			header Access-Control-Allow-Origin *
 			header Cache-Control "max-age=300"
-			respond `{"tavrn":1,"domain":"{$TAVRN_NODE_DOMAIN:tavrn.org}","api":"{$TAVRN_NODE_URL:https://tavrn.swsp.eu}/api/v1","ws":"{$TAVRN_NODE_WS_URL:wss://tavrn.swsp.eu/api/v1/ws}","web":"{$TAVRN_APP_URL:https://tavrn.swsp.eu}"}` 200
+			respond `{"tavrn":1,"domain":"{$TAVRN_NODE_DOMAIN:tavrn.org}","api":"{$TAVRN_NODE_URL:https://app.tavrn.org}/api/v1","ws":"{$TAVRN_NODE_WS_URL:wss://app.tavrn.org/api/v1/ws}","web":"{$TAVRN_APP_URL:https://app.tavrn.org}"}` 200
 		}
 		handle @proxied {
-			reverse_proxy {$TAVRN_NODE_URL:https://tavrn.swsp.eu} {
+			reverse_proxy {$TAVRN_NODE_URL:https://app.tavrn.org} {
 				header_up Host {upstream_hostport}
 			}
 		}

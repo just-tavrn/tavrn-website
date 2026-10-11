@@ -213,8 +213,8 @@ in.
 
 | Variable | Default | Used for |
 |---|---|---|
-| `TAVRN_APP_URL` | `https://tavrn.swsp.eu` | `/app` ("Open the web app") redirects here |
-| `TAVRN_NODE_URL` | `https://tavrn.swsp.eu` | The node the status page (`/healthz`, `/readyz`, `/api/v1/node`) and the live dot of the "Status" link (`/healthz`) ask from the visitor's browser; allowed in the CSP's `connect-src` |
+| `TAVRN_APP_URL` | `https://app.tavrn.org` | `/app` ("Open the web app") redirects here |
+| `TAVRN_NODE_URL` | `https://app.tavrn.org` | The node the status page (`/healthz`, `/readyz`, `/api/v1/node`) and the live dot of the "Status" link (`/healthz`) ask from the visitor's browser; allowed in the CSP's `connect-src` |
 | `TAVRN_NODE_WS_URL` | derived from `TAVRN_NODE_URL` | WebSocket endpoint in the delegation document |
 | `TAVRN_NODE_DOMAIN` | `tavrn.org` | Identity domain in the delegation document |
 | `TAVRN_WELLKNOWN` | `off` | `/.well-known/tavrn`: `off` (404), `on` (static document from these variables), `proxy` (the node's own document) |

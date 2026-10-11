@@ -8,7 +8,7 @@
 # Caddy fills into the two legal pages (TAVRN_IMPRINT_*, TAVRN_CONTACT_EMAIL, TAVRN_NODE_HOST).
 set -eu
 
-default_node_url=https://tavrn.swsp.eu
+default_node_url=https://app.tavrn.org
 
 # URLs without a trailing slash (the Caddyfile appends paths, and reverse_proxy accepts no path at all).
 for var in TAVRN_APP_URL TAVRN_NODE_URL TAVRN_NODE_WS_URL UPTIME_KUMA_URL; do
