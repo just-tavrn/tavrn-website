@@ -20,3 +20,11 @@ updates:
   - package-ecosystem: docker
     directory: /deploy
     schedule: { interval: weekly }
+  # The documentation sources (sources/*): a daily bump pulls the latest docs of the code repositories into the site,
+  # so a docs-only change there builds here and nowhere else (just-tavrn/.github, docs/GITHUB.md "Docs-only changes").
+  - package-ecosystem: gitsubmodule
+    directory: /
+    schedule: { interval: daily }
+    groups:
+      sources:
+        patterns: ["*"]
