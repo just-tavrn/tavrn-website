@@ -10,9 +10,9 @@ services:
     restart: unless-stopped
     environment:
       # Where /app ("Open the web app") redirects to.
-      TAVRN_APP_URL: ${TAVRN_APP_URL:-https://tavrn.swsp.eu}
+      TAVRN_APP_URL: ${TAVRN_APP_URL:-https://app.tavrn.org}
       # The official node, asked by the visitor's browser for the status page and the header pill (/healthz, …).
-      TAVRN_NODE_URL: ${TAVRN_NODE_URL:-https://tavrn.swsp.eu}
+      TAVRN_NODE_URL: ${TAVRN_NODE_URL:-https://app.tavrn.org}
       # WebSocket endpoint for the delegation document; empty = derived from TAVRN_NODE_URL.
       TAVRN_NODE_WS_URL: ${TAVRN_NODE_WS_URL:-}
       # Identity domain named in /.well-known/tavrn.
