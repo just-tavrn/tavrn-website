@@ -222,6 +222,8 @@
 		handle @proxied {
 			reverse_proxy {$TAVRN_NODE_URL:https://app.tavrn.org} {
 				header_up Host {upstream_hostport}
+				# The site's own Cache-Control (five minutes, above) applies; the node's would arrive as a second header.
+				header_down -Cache-Control
 			}
 		}
 		handle {
