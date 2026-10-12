@@ -62,6 +62,9 @@ for p in "$port" "$((port + 1))" "$((port + 2))" "$((port + 5))" "$((port + 6))"
   for _ in $(seq 1 50); do curl -fs "http://127.0.0.1:$p/" >/dev/null && break; sleep 0.2; done
 done
 
+# From here on every command is a check that reports its own status: with -e a failing one would end the script
+# silently (no FAIL line, no later checks) and the cleanup would hide what happened.
+set +e
 fail=0
 check() { # description, condition (exit status of the previous command)
   if [ "$2" -eq 0 ]; then echo "ok   $1"; else echo "FAIL $1"; fail=1; fi
@@ -140,8 +143,10 @@ for path in /gh/releases /gh/releases/ /gh/releases/other /gh/releases/tavrn-web
   [ "$code" = 404 ]; check "other paths under /gh/ are 404: $path ($code)" $?
 done
 
-docker logs "$id-bad" 2>&1 | grep -q 'GITHUB_READ_TOKEN contains characters' && docker logs "$id-bad" 2>&1 | grep -q 'is not a GitHub organization name'
-check "entrypoint.sh warns about both values" $?
+# docker logs may lag behind the entrypoint's start by a moment.
+warned() { docker logs "$id-bad" 2>&1 | grep -q 'GITHUB_READ_TOKEN contains characters' && docker logs "$id-bad" 2>&1 | grep -q 'is not a GitHub organization name'; }
+for _ in $(seq 1 50); do warned && break; sleep 0.2; done
+warned; check "entrypoint.sh warns about both values" $?
 
 # --- Desktop update feeds (/updates/desktop/<channel>/<file>) ---
 # The release map is written in the background after the start: wait until the channels answer.
@@ -195,6 +200,8 @@ for path in /updates/desktop/nightly/latest.json /updates/desktop/stable/ /updat
   code="$(curl -s --path-as-is -o /dev/null -w '%{http_code}' "http://127.0.0.1:$port$path")"
   [ "$code" = 404 ]; check "unknown update paths are 404: $path ($code)" $?
 done
+# update-feeds.sh starts a second after Caddy and logs the refusal after its first attempt: give it a moment.
+for _ in $(seq 1 50); do docker logs "$id-refused" 2>&1 | grep -q 'update feeds: could not read the release list' && break; sleep 0.2; done
 docker logs "$id-refused" 2>&1 | grep -q 'update feeds: could not read the release list'
 check "update-feeds.sh logs a refused release list" $?
 docker exec "$id-site" sh -c 'ps -o user,args | grep -v grep | grep -q tavrn-update-feeds'
