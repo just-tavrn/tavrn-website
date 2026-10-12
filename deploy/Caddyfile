@@ -14,8 +14,9 @@
 #   TAVRN_WELLKNOWN     off (404), on (a static document from these variables) or proxy (the node's own document)
 #   UPTIME_KUMA_URL     base URL of the Uptime Kuma instance as this container reaches it (empty: no uptime history)
 #   UPTIME_KUMA_PAGE    slug of its public status page
-#   GITHUB_READ_TOKEN   read-only GitHub token for the known-issues list (/gh/issues) and the download page's release
-#                       data (/gh/releases/web, /gh/releases/node, /gh/repos/web); empty: those paths are 404
+#   GITHUB_READ_TOKEN   read-only GitHub token for the known-issues list (/gh/issues), the download page's release
+#                       data (/gh/releases/web, /gh/releases/node, /gh/repos/web) and the desktop apps' update feeds
+#                       (/updates/desktop/…); empty: /gh/* is 404 and the update feeds 503
 #   GITHUB_ORG          the GitHub organization of those issues and of the tavrn-web and tavrn-node repositories
 #   TAVRN_IMPRINT_NAME, TAVRN_IMPRINT_STREET, TAVRN_IMPRINT_CITY, TAVRN_IMPRINT_COUNTRY, TAVRN_CONTACT_EMAIL
 #                       the provider in the imprint and the controller in the privacy policy (filled into the two
@@ -207,6 +208,64 @@
 		import github_api
 	}
 
+	# The desktop apps' update feeds, one per channel (tavrn-web docs/DESKTOP.md "Updates"): the Tauri updater asks for
+	# /updates/desktop/<channel>/latest.json, the Electron shell for latest.yml (Windows) or latest-linux.yml (Linux)
+	# and their .minisig signatures. Each answer is a 302 to that file on GitHub's release downloads of tavrn-web, so
+	# the signed files are served by GitHub exactly as the release workflow uploaded them; this server only chooses the
+	# release. GitHub's own "latest" cannot do it: it never points at a pre-release.
+	#   stable  the highest version that is not a pre-release (and not a draft) and carries the requested feed file
+	#   beta    the highest version of all, pre-releases included
+	# The choice comes from update-feeds.sh, which entrypoint.sh starts next to Caddy: every five minutes it reads the
+	# release list through the internal proxy below (127.0.0.1:8081) and writes one tag per channel and feed file to
+	# /tmp/tavrn-updates (an empty file: no release); the map below reads those files on every request. Before the first
+	# list arrived (no GITHUB_READ_TOKEN, GitHub unreachable or refusing the token) the feeds answer 503 "unavailable";
+	# a channel without a release 404 "no_release". The .minisig of a feed comes from the feed's own release.
+	@updatefeed {
+		method GET HEAD
+		path_regexp feed ^/updates/desktop/(stable|beta)/(latest\.json|latest\.yml|latest-linux\.yml)(\.minisig)?$
+	}
+	handle @updatefeed {
+		map {re.feed.1}/{re.feed.2} {tavrn_update_tag} {
+			stable/latest.json {file./tmp/tavrn-updates/stable-latest.json}
+			stable/latest.yml {file./tmp/tavrn-updates/stable-latest.yml}
+			stable/latest-linux.yml {file./tmp/tavrn-updates/stable-latest-linux.yml}
+			beta/latest.json {file./tmp/tavrn-updates/beta-latest.json}
+			beta/latest.yml {file./tmp/tavrn-updates/beta-latest.yml}
+			beta/latest-linux.yml {file./tmp/tavrn-updates/beta-latest-linux.yml}
+		}
+		@unavailable not file {
+			root /tmp/tavrn-updates
+			try_files /ready
+		}
+		@norelease vars {tavrn_update_tag} ""
+		handle @unavailable {
+			header Content-Type application/json
+			header Cache-Control no-store
+			respond `{"error":"unavailable","channel":"{re.feed.1}"}` 503
+		}
+		handle @norelease {
+			header Content-Type application/json
+			header Cache-Control "public, max-age=300"
+			respond `{"error":"no_release","channel":"{re.feed.1}"}` 404
+		}
+		handle {
+			header Cache-Control "public, max-age=300"
+			redir https://github.com/{$GITHUB_ORG:just-tavrn}/tavrn-web/releases/download/{tavrn_update_tag}/{re.feed.2}{re.feed.3} 302
+		}
+	}
+	# The installers and block maps electron-updater downloads next to the feed (the feed names them relative to its
+	# own URL): every one carries its version in its name (Tavrn-0.4.0.AppImage, tavrn_0.4.0_amd64.deb,
+	# tavrn-electron_0.4.0_x64-setup.exe(.blockmap)), so it redirects to the release of that version, whatever the
+	# channel. The Tauri updater's latest.json names absolute GitHub URLs and never asks here.
+	@updateasset {
+		method GET HEAD
+		path_regexp asset ^/updates/desktop/(?:stable|beta)/((?:[A-Za-z]+[-_])+(\d{1,4}\.\d{1,4}\.\d{1,4}(?:-(?:alpha|beta|rc)\.\d{1,4})?)[-_.][A-Za-z0-9._-]{1,100})$
+	}
+	handle @updateasset {
+		header Cache-Control "public, max-age=3600"
+		redir https://github.com/{$GITHUB_ORG:just-tavrn}/tavrn-web/releases/download/v{re.asset.2}/{re.asset.1} 302
+	}
+
 	# Identity-domain delegation (tavrn-node's HANDBOOK.md, "Identity domain and node host"). "proxy" forwards to the
 	# node's own document, which carries its signing keys and is what the handbook recommends; "on" answers a static
 	# document with the endpoints only.
@@ -259,5 +318,24 @@
 		file_server {
 			status 404
 		}
+	}
+}
+
+# The release list update-feeds.sh reads: only inside the container (127.0.0.1), without an access log. The same
+# proxy as /gh/releases/web (the github_api snippet: the token added here, nothing else passed on), but the 100 newest
+# releases, so that a stable release stays in reach behind many pre-releases.
+http://127.0.0.1:8081 {
+	bind 127.0.0.1
+	@releases {
+		method GET
+		path /releases/web
+		expression `"{$GITHUB_READ_TOKEN:}" != ""`
+	}
+	handle @releases {
+		rewrite * /repos/{$GITHUB_ORG:just-tavrn}/tavrn-web/releases?per_page=100
+		import github_api
+	}
+	handle {
+		error 404
 	}
 }

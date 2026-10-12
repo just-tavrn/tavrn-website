@@ -4,8 +4,9 @@
 # Starts Caddy with the website's Caddyfile. Caddy cannot rewrite one variable into another, so the WebSocket URL of
 # the delegation document is derived here from TAVRN_NODE_URL (https -> wss, http -> ws, plus /api/v1/ws) unless
 # TAVRN_NODE_WS_URL is set explicitly. The default must match the one in the Caddyfile. It also checks the two
-# values of the GitHub proxies (GITHUB_ORG, GITHUB_READ_TOKEN) and prepares the imprint and contact details that
-# Caddy fills into the two legal pages (TAVRN_IMPRINT_*, TAVRN_CONTACT_EMAIL, TAVRN_NODE_HOST).
+# values of the GitHub proxies (GITHUB_ORG, GITHUB_READ_TOKEN), prepares the imprint and contact details that
+# Caddy fills into the two legal pages (TAVRN_IMPRINT_*, TAVRN_CONTACT_EMAIL, TAVRN_NODE_HOST) and starts the release
+# map of the desktop update feeds (update-feeds.sh).
 set -eu
 
 default_node_url=https://app.tavrn.org
@@ -110,5 +111,16 @@ case "$node_host" in
 esac
 TAVRN_NODE_HOST="$(html_escape "$node_host")"
 export TAVRN_NODE_HOST
+
+# The desktop apps' update feeds (/updates/desktop/…): update-feeds.sh keeps the release map in /tmp/tavrn-updates
+# current, reading the release list through Caddy's internal proxy, so it needs the token. It runs in the background
+# and stays a child of Caddy after the exec below; without the token the feeds answer 503.
+if [ -n "$token" ]; then
+  if command -v jq >/dev/null 2>&1 && [ -x /usr/local/bin/tavrn-update-feeds ]; then
+    /usr/local/bin/tavrn-update-feeds &
+  else
+    echo "tavrn-website: jq or tavrn-update-feeds is missing; the desktop update feeds stay off" >&2
+  fi
+fi
 
 exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
