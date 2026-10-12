@@ -42,6 +42,15 @@ case "$token" in
 esac
 export GITHUB_READ_TOKEN="$token"
 
+# The Android app's certificate fingerprint for /.well-known/assetlinks.json: 32 hex bytes separated by colons
+# (`keytool -list -v`), upper case. Anything else switches the document off.
+cert="$(printf '%s' "${TAVRN_ANDROID_CERT_SHA256:-}" | tr -d '[:space:]' | tr 'a-f' 'A-F')"
+if [ -n "$cert" ] && ! printf '%s' "$cert" | grep -Eq '^([0-9A-F]{2}:){31}[0-9A-F]{2}$'; then
+  echo "tavrn-website: TAVRN_ANDROID_CERT_SHA256 is not a SHA-256 fingerprint (AA:BB:…, 32 bytes); /.well-known/assetlinks.json stays off" >&2
+  cert=
+fi
+export TAVRN_ANDROID_CERT_SHA256="$cert"
+
 if [ -z "${TAVRN_NODE_WS_URL:-}" ]; then
   node_url="${TAVRN_NODE_URL:-$default_node_url}"
   case "$node_url" in

@@ -231,6 +231,21 @@
 		}
 	}
 
+	# The Android app's Digital Asset Links (tavrn-web docs/ANDROID.md): tavrn.org is the relying party of the passkeys
+	# the app may use (get_login_creds) and names the app for links (handle_all_urls). Answered only while
+	# TAVRN_ANDROID_CERT_SHA256 holds the release certificate's fingerprint (entrypoint.sh checks its form); else 404.
+	handle /.well-known/assetlinks.json {
+		@android expression `"{$TAVRN_ANDROID_CERT_SHA256:}" != ""`
+		handle @android {
+			header Content-Type application/json
+			header Cache-Control "max-age=300"
+			respond `[{"relation":["delegate_permission/common.handle_all_urls","delegate_permission/common.get_login_creds"],"target":{"namespace":"android_app","package_name":"org.tavrn.app","sha256_cert_fingerprints":["{$TAVRN_ANDROID_CERT_SHA256:}"]}}]` 200
+		}
+		handle {
+			error 404
+		}
+	}
+
 	# The site: clean URLs (Astro's build.format "directory"), hidden dotfiles.
 	handle {
 		try_files {path} {path}/index.html {path}.html

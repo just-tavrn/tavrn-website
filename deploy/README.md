@@ -100,6 +100,29 @@ The container's access log on stdout contains no IP addresses (neither the conne
 limits the log to three rotating files of 10 MB. NPM keeps its own access logs: switch them off for this proxy
 host, or keep them short, so the privacy policy ("our server does not log IP addresses") stays true.
 
+## Android app: Digital Asset Links
+
+The Android app (`org.tavrn.app`, tavrn-web `docs/ANDROID.md`) needs a Digital Asset Links document on two hosts,
+both naming the SHA-256 fingerprint of the app's **release signing certificate** (the owner's keystore,
+`keytool -list -v -keystore tavrn-release.jks -alias tavrn`):
+
+```json
+[{"relation":["delegate_permission/common.handle_all_urls","delegate_permission/common.get_login_creds"],
+  "target":{"namespace":"android_app","package_name":"org.tavrn.app","sha256_cert_fingerprints":["<AA:BB:…>"]}}]
+```
+
+- `https://tavrn.org/.well-known/assetlinks.json` (this container): set `TAVRN_ANDROID_CERT_SHA256` in the stack; the
+  container answers the document above (until then 404). tavrn.org is the relying party of the node's passkeys, so
+  this lets the app use them in its own webview (Android 14 and newer, once the node accepts the app's origin).
+- `https://app.tavrn.org/.well-known/assetlinks.json` (the node's host, not this container): the same document, so
+  invite and add links of app.tavrn.org open in the app (App Links). Serve it from the reverse proxy in front of the
+  node (in Nginx Proxy Manager a custom location `= /.well-known/assetlinks.json` returning the JSON with
+  `default_type application/json`) until the node serves it itself.
+
+Both answer with status 200, `Content-Type: application/json` and no redirect; Cloudflare's `/.well-known/*` bypass
+rule above applies. With Google Play App Signing the fingerprint is the one Play signs with (Play Console → App
+integrity), not the upload key's.
+
 ## Checks after a deployment
 
 ```sh
@@ -108,6 +131,7 @@ curl -s https://tavrn.org/config.json
 curl -s https://tavrn.org/legal/imprint/ | grep -o '<address.*</address>'   # the values of TAVRN_IMPRINT_*, no {{env …}}
 curl -sI https://tavrn.org/app | grep -i location
 curl -s https://tavrn.org/.well-known/tavrn     # 404 unless TAVRN_WELLKNOWN is on or proxy
+curl -s https://tavrn.org/.well-known/assetlinks.json   # 404 unless TAVRN_ANDROID_CERT_SHA256 is set
 curl -sI https://tavrn.org/gh/issues | grep -i -E '^HTTP|cache-control|cf-cache-status'   # 404 without GITHUB_READ_TOKEN
 curl -s https://tavrn.org/gh/releases/web | head -c 300; echo   # the release list of tavrn-web (404 without the token)
 curl -s https://tavrn.org/gh/repos/web | grep -o '"private": *[a-z]*'
