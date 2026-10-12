@@ -41,7 +41,7 @@ just check        # everything below, must be green before a commit
 
 `just check` runs `astro check`, the build, Vitest (unit tests, the checks of `dist/` and its link checker), the SPDX and license
 checks, `scripts/publish-check.sh`, `caddy validate` on `deploy/Caddyfile` and the Playwright suite. The two Docker
-tests of the Caddyfile (`just caddy-test`: the GitHub proxies under `/gh/` and the legal pages' runtime values) run
+tests of the Caddyfile (`just caddy-test`: the GitHub proxies under `/gh/`, the desktop update feeds and the legal pages' runtime values) run
 separately. Playwright runs only Chromium and the Android phone emulation with two workers:
 
 ```sh
@@ -123,6 +123,13 @@ pure functions with unit tests:
 - **Stable** is the newest release that is not a pre-release (by publication date), **Beta** the newest pre-release
   published after it, or the newest pre-release at all when there is no stable release. GitHub's pre-release flag
   marks the betas.
+
+**Update feeds of the desktop apps.** The apps check for updates on this site, per channel:
+`/updates/desktop/stable/…` and `/updates/desktop/beta/…` (`latest.json` for the Tauri app, `latest.yml` and
+`latest-linux.yml` with their `.minisig` for the Electron shell). Each is a redirect to that file on GitHub's release
+downloads, of the highest stable version, or for beta the highest version including pre-releases, that carries the
+file; the container only chooses the release (`deploy/update-feeds.sh`, refreshed every five minutes) and never
+serves a feed itself. Details in [deploy/README.md](deploy/README.md#desktop-update-feeds).
 - Both: two tabs above the OS cards, "Stable <version>" (selected) and "Beta <version>" (WAI-ARIA tabs, arrow keys,
   Home and End). The tab swaps the whole card set, the release line under the title, the verify details and the
   verifier's known checksums; the beta panel starts with a sentence on what a beta is and its cards carry a "Beta"
@@ -221,7 +228,7 @@ in.
 | `TAVRN_ANDROID_CERT_SHA256` | empty | `/.well-known/assetlinks.json` for the Android app `org.tavrn.app`: the SHA-256 fingerprint of its release certificate (`AA:BB:…`); empty: 404 (deploy/README.md "Android app") |
 | `UPTIME_KUMA_URL` | empty | Uptime Kuma base URL as the container reaches it (for example `http://uptime-kuma:3001`); the container proxies the status page's two API endpoints as `/uptime/api/status-page/…`, because Kuma sends no CORS headers |
 | `UPTIME_KUMA_PAGE` | empty | Slug of Uptime Kuma's public status page |
-| `GITHUB_READ_TOKEN` | empty | Read-only GitHub token (Issues and Contents: read-only) for the known-issues page and the download page: the container forwards `GET /gh/issues` (the issue search), `GET /gh/releases/web`, `GET /gh/releases/node` (the release lists) and `GET /gh/repos/web` (whether `tavrn-web` is private) to GitHub's API with it, without anything from the visitor; empty: `/gh/*` is 404, the known-issues page links to GitHub and the download page says there is no release yet |
+| `GITHUB_READ_TOKEN` | empty | Read-only GitHub token (Issues and Contents: read-only) for the known-issues page, the download page and the desktop update feeds: the container forwards `GET /gh/issues` (the issue search), `GET /gh/releases/web`, `GET /gh/releases/node` (the release lists) and `GET /gh/repos/web` (whether `tavrn-web` is private) to GitHub's API with it, without anything from the visitor, and reads the release list for `/updates/desktop/…` every five minutes; empty: `/gh/*` is 404, the known-issues page links to GitHub, the download page says there is no release yet and the update feeds answer 503 |
 | `GITHUB_ORG` | `just-tavrn` | The organization of the issues and of the `tavrn-web` and `tavrn-node` repositories behind `/gh/` (keep it equal to `PUBLIC_GITHUB_ORG`, which also names the node image) |
 | `TAVRN_IMPRINT_NAME` | `Name of the provider` | Provider in the imprint and GDPR controller in the privacy policy (personal data: set it in the stack, never in the repository) |
 | `TAVRN_IMPRINT_STREET` | `Street and number` | Provider's street |
@@ -276,7 +283,8 @@ English lives at the root, every other language under `/<code>/` (for German: `/
 - No external requests except the status check: no CDNs, fonts, analytics or embeds. The only connection to another
   origin is the visitor's browser asking the official node (`TAVRN_NODE_URL`) for its health, from the live dot of
   the "Status" link and the status page; the privacy policy says so. The known-issues list and the release lists come
-  from GitHub through this site's own server (`/gh/…`), not from the browser; downloads are ordinary links to GitHub. No cookies and no browser storage. The tests enforce all of it.
+  from GitHub through this site's own server (`/gh/…`), not from the browser; downloads are ordinary links to GitHub,
+  and the desktop apps' update feeds (`/updates/desktop/…`) redirect to GitHub. No cookies and no browser storage. The tests enforce all of it.
 - WCAG 2.2 AA: visible focus, 44 px targets on touch, contrast from the tokens only, headings in order, alt texts,
   reduced motion respected, everything works with the keyboard.
 - The landing page stays under 50 KB of JavaScript (gzipped), without an island framework; the status and known-issues

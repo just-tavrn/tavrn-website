@@ -12,9 +12,10 @@ Browser ──HTTPS──> Cloudflare (proxy, cache) ──HTTPS──> Nginx Pr
 | File | What |
 |---|---|
 | `Dockerfile` | Multi-stage build: `pnpm build` on `node:24-alpine`, then `caddy:2-alpine` with `dist/` at `/srv`, unprivileged |
-| `Caddyfile` | Headers (CSP, HSTS, …), cache rules, clean URLs, 404 page, `/app`, `/config.json`, `/.well-known/tavrn`, the `/uptime/` proxy and the read-only GitHub proxies (`/gh/issues`, `/gh/releases/web`, `/gh/releases/node`, `/gh/repos/web`), IP-free access log |
-| `entrypoint.sh` | Normalizes the URLs, derives `TAVRN_NODE_WS_URL` and `TAVRN_NODE_HOST`, checks `GITHUB_ORG` and `GITHUB_READ_TOKEN`, HTML-escapes the imprint and contact details, then starts Caddy |
-| `test/gh-proxy.sh` | Checks the four GitHub proxy routes under `/gh/` in Docker against a fake GitHub API (`just gh-proxy-test`) |
+| `Caddyfile` | Headers (CSP, HSTS, …), cache rules, clean URLs, 404 page, `/app`, `/config.json`, `/.well-known/tavrn`, the `/uptime/` proxy, the read-only GitHub proxies (`/gh/issues`, `/gh/releases/web`, `/gh/releases/node`, `/gh/repos/web`), the desktop update feeds (`/updates/desktop/…`), IP-free access log |
+| `entrypoint.sh` | Normalizes the URLs, derives `TAVRN_NODE_WS_URL` and `TAVRN_NODE_HOST`, checks `GITHUB_ORG` and `GITHUB_READ_TOKEN`, HTML-escapes the imprint and contact details, starts `update-feeds.sh` (with a token), then Caddy |
+| `update-feeds.sh` | The release map of the desktop update feeds: every five minutes the release each channel's feeds redirect to ("Desktop update feeds" below) |
+| `test/gh-proxy.sh` | Checks the four GitHub proxy routes under `/gh/` and the desktop update feeds in Docker against a fake GitHub API (`just gh-proxy-test`) |
 | `test/legal-templates.sh` | Checks in Docker that the legal pages show the imprint and contact details of the environment, escaped, and that no other page is a template (`just legal-templates-test`) |
 | `docker-compose.yml` | The stack for Portainer: the `website` service and an optional, commented Uptime Kuma |
 | `.env.example` | Every runtime variable with its default and meaning |
@@ -64,6 +65,47 @@ builds the same image as `ghcr.io/just-tavrn/tavrn-website` on `main` and on `v*
    `/gh/*` is 404: the known-issues page says that the list is not available yet, the download page that there is
    no release yet, and both link to GitHub. Fine-grained tokens expire: put a reminder in the calendar, an expired
    token shows as "could not be loaded" on the known-issues page and as "no release yet" on the download page.
+   The same token feeds the desktop apps' update channels (next section); without it they answer 503 and the apps
+   say that the update server is unavailable.
+
+## Desktop update feeds
+
+The desktop apps (tavrn-web, `docs/DESKTOP.md` "Updates") look for updates on this site, one feed per **channel**:
+
+| Path | Asked by |
+|---|---|
+| `/updates/desktop/<channel>/latest.json` | the Tauri app (Windows) |
+| `/updates/desktop/<channel>/latest.yml`, `latest.yml.minisig` | the Electron shell on Windows |
+| `/updates/desktop/<channel>/latest-linux.yml`, `latest-linux.yml.minisig` | the Electron shell on Linux |
+| `/updates/desktop/<channel>/<installer>` | the Electron shell's download (the feed names its files relative to itself) |
+
+`<channel>` is `stable` or `beta`. Every answer is a **302 redirect** to the file on GitHub's release downloads of
+`tavrn-web` (`https://github.com/<GITHUB_ORG>/tavrn-web/releases/download/<tag>/<file>`): GitHub serves the signed
+files exactly as the release workflow uploaded them, the container only chooses the release and never sees or caches
+a feed or an installer. The release of a feed file is
+
+- **stable**: the highest version that is neither a pre-release nor a draft and has that file attached;
+- **beta**: the highest version that is not a draft and has that file attached, pre-releases included (a stable
+  release that is newer than every pre-release is also the beta channel's).
+
+"Highest" compares the tags as semantic versions (`v0.5.0` > `v0.5.0-rc.10` > `v0.5.0-rc.9`); tags of another form
+are ignored. Each feed file is chosen on its own, so a release with only the web bundle, or one whose Linux build is
+still missing, does not hide the previous one. The `.minisig` signature comes from its feed's release. Installers and
+block maps carry their version in their name (`Tavrn-0.4.0.AppImage`, `tavrn_0.4.0_amd64.deb`,
+`tavrn-electron_0.4.0_x64-setup.exe(.blockmap)`) and redirect to the release of that version.
+
+GitHub's own `releases/latest/download/…` cannot do this: "latest" never points at a pre-release, so the apps of a
+pre-release saw a 404. The choice is made by `update-feeds.sh`, which `entrypoint.sh` starts next to Caddy when
+`GITHUB_READ_TOKEN` is set: every five minutes it reads the 100 newest releases through Caddy's internal proxy
+(`127.0.0.1:8081`, the same header rules as `/gh/`, not reachable from outside the container) and writes one tag
+per channel and feed file to `/tmp/tavrn-updates/` (the compose file's `tmpfs`), which the Caddyfile reads on every
+request. A new release is offered within five minutes. Caddy's templates cannot answer a redirect and Caddy keeps no
+cache of its own, so this small shell script with `jq` (part of the image) does it instead of a separate service.
+
+Answers besides the redirect: `404` with `{"error":"no_release","channel":"<channel>"}` when no release of the channel
+carries the file, `503` with `{"error":"unavailable","channel":"<channel>"}` until the first release list arrived
+(no token, GitHub unreachable or refusing the token; `update feeds: could not read the release list` in the
+container's log). Redirects and `no_release` may be cached for five minutes, `unavailable` not at all.
 
 ## Nginx Proxy Manager
 
@@ -83,6 +125,8 @@ builds the same image as `ghcr.io/just-tavrn/tavrn-website` on `main` and on `v*
   - `/_astro/*`: cache everything, edge TTL one year (the files are content-hashed and sent as `immutable`).
   - `/config.json`, `/status`, `/status/`, `/uptime/*`, `/.well-known/*`: **bypass** the cache (runtime values; the
     status page's live data comes from the node directly, the uptime history through `/uptime/`).
+  - `/updates/*`: respect the origin's headers (redirects five minutes, `unavailable` not cached). The apps ask
+    rarely (at start and on demand), and the container answers from its own map without asking GitHub.
   - `/gh/*`: **cache** (eligible for cache, respect the origin's `Cache-Control: public, max-age=300`). Cloudflare
     does not cache extension-less paths by default, and this rule is what keeps GitHub's search limit (30 requests
     a minute per token) out of reach: with it GitHub sees about one request per five minutes and Cloudflare data
@@ -135,4 +179,6 @@ curl -s https://tavrn.org/.well-known/assetlinks.json   # 404 unless TAVRN_ANDRO
 curl -sI https://tavrn.org/gh/issues | grep -i -E '^HTTP|cache-control|cf-cache-status'   # 404 without GITHUB_READ_TOKEN
 curl -s https://tavrn.org/gh/releases/web | head -c 300; echo   # the release list of tavrn-web (404 without the token)
 curl -s https://tavrn.org/gh/repos/web | grep -o '"private": *[a-z]*'
+curl -sI https://tavrn.org/updates/desktop/beta/latest.json | grep -i -E '^HTTP|^location'     # 302 to the newest release's feed
+curl -s https://tavrn.org/updates/desktop/stable/latest.json   # {"error":"no_release",…} until a stable release exists
 ```

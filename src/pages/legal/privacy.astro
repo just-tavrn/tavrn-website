@@ -98,6 +98,12 @@ const locale = Astro.currentLocale;
       receives data when you follow one. This website tells browsers not to send the address of the page you came
       from (no referrer).
     </p>
+    <p>
+      The desktop apps check for updates by asking this website which release is current for their update channel
+      (at start and when you check by hand). The website answers with the address of the update file on GitHub, and
+      the app then downloads it from GitHub. These requests are logged like page requests, without your IP address,
+      and pass through Cloudflare (above); the download from GitHub is subject to GitHub's privacy statement.
+    </p>
 
     <h2>E-mail</h2>
     <p>

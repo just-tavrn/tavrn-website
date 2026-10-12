@@ -31,12 +31,15 @@ LABEL org.opencontainers.image.title="tavrn-website" \
       org.opencontainers.image.source="https://github.com/just-tavrn/tavrn-website" \
       org.opencontainers.image.licenses="Apache-2.0 AND CC-BY-4.0"
 RUN --mount=type=bind,from=caddy,source=/usr/bin/caddy,target=/mnt/caddy \
-    apk add --no-cache ca-certificates && mkdir -p /etc/caddy && cp /mnt/caddy /usr/bin/caddy
+    apk add --no-cache ca-certificates jq && mkdir -p /etc/caddy && cp /mnt/caddy /usr/bin/caddy
 COPY deploy/Caddyfile /etc/caddy/Caddyfile
 COPY deploy/entrypoint.sh /usr/local/bin/tavrn-website
+# The release map of the desktop update feeds (entrypoint.sh starts it; jq above reads the release list).
+COPY deploy/update-feeds.sh /usr/local/bin/tavrn-update-feeds
 COPY --from=build /app/dist /srv
 COPY --from=build /app/csp-script-hashes.txt /etc/caddy/csp-script-hashes.txt
-# Nothing is written at runtime (no certificates, no admin API, no persisted config): run unprivileged.
+# Nothing is written at runtime except the update feeds' release map in /tmp (no certificates, no admin API, no
+# persisted config): run unprivileged.
 USER 65534:65534
 ENV XDG_CONFIG_HOME=/tmp XDG_DATA_HOME=/tmp
 EXPOSE 8080
