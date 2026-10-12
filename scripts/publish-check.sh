@@ -56,14 +56,22 @@ for list in ./.publish-check.private ../.publish-check.private "$here/.publish-c
   [ -f "$list" ] || continue
   while IFS= read -r p; do [ -n "$p" ] && [[ "$p" != \#* ]] && patterns+=("$p"); done < "$list"
 done
+# The default node host of deploy/.env.example and its parent domain count as private while the official node
+# lives under a private domain; the site's own domain (PUBLIC_SITE_URL, https://tavrn.org) and its subdomains never do.
+site_host="${PUBLIC_SITE_URL:-https://tavrn.org}"
+site_host="${site_host#*://}"; site_host="${site_host%%/*}"
 default_host=""
 for example in deploy/.env.example "$here/deploy/.env.example"; do
   [ -f "$example" ] || continue
   default_host=$(sed -n 's#^TAVRN_NODE_URL=https\{0,1\}://\([^/ #]*\).*#\1#p' "$example" | head -n 1)
   [ -n "$default_host" ] || continue
-  patterns+=("$default_host")
   parent="${default_host#*.}"
-  [[ "$parent" == *.* ]] && patterns+=("$parent")
+  for candidate in "$default_host" "$parent"; do
+    [[ "$candidate" == *.* ]] || continue
+    [ "$candidate" = "$site_host" ] && continue
+    [[ "$candidate" == *".$site_host" ]] && continue
+    patterns+=("$candidate")
+  done
   break
 done
 [ "${#patterns[@]}" -gt 0 ] && mapfile -t patterns < <(printf '%s\n' "${patterns[@]}" | sort -u)

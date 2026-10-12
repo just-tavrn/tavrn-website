@@ -37,7 +37,8 @@ function prose(html: string): string {
 /**
  * The private strings of the publication check (scripts/publish-check.sh): PUBLISH_CHECK_PRIVATE, the
  * .publish-check.private files, the owner's list in a sibling tavrn-internal checkout (searched upwards, so a
- * worktree finds it too), and the default node host of deploy/.env.example with its parent domain.
+ * worktree finds it too), and the default node host of deploy/.env.example with its parent domain, unless it is the
+ * site's own domain (PUBLIC_SITE_URL, https://tavrn.org) or one of its subdomains.
  */
 function privateStrings(): string[] {
   const found = (process.env.PUBLISH_CHECK_PRIVATE ?? "").split(",").map((s) => s.trim());
@@ -46,8 +47,10 @@ function privateStrings(): string[] {
   for (const list of lists) {
     if (existsSync(list)) found.push(...read(list).split("\n").map((l) => l.trim()).filter((l) => !l.startsWith("#")));
   }
+  const site = new URL(process.env.PUBLIC_SITE_URL || "https://tavrn.org").hostname;
   const host = /^TAVRN_NODE_URL=https?:\/\/([^/\s#]+)/m.exec(read(join(root, "deploy/.env.example")))?.[1];
-  if (host) found.push(host, host.slice(host.indexOf(".") + 1));
+  const own = (h: string) => h === site || h.endsWith(`.${site}`);
+  if (host) found.push(...[host, host.slice(host.indexOf(".") + 1)].filter((h) => h.includes(".") && !own(h)));
   return [...new Set(found.filter((s) => s.length > 3))];
 }
 
@@ -107,9 +110,10 @@ describe.skipIf(!built)("the built wiki", () => {
     for (const v of ["TAVRN_DOMAIN", "TAVRN_PUBLIC_URL", "POSTGRES_PASSWORD", "TAVRN_REGISTRATION"]) expect(html).toContain(`id="${v}"`);
   });
 
-  it("names nothing private in the docs and the roadmap", () => {
-    const strings = privateStrings();
-    expect(strings.length).toBeGreaterThan(0);
+  // Without a list (the CI's JavaScript job has no PUBLISH_CHECK_PRIVATE) there is nothing to check here; the
+  // publication hygiene job runs scripts/publish-check.sh with the secret in every case.
+  const strings = privateStrings();
+  it.skipIf(strings.length === 0)("names nothing private in the docs and the roadmap", () => {
     for (const file of [...docsPages, join(dist, "roadmap/index.html")]) {
       const html = read(file);
       for (const s of strings) expect(html.includes(s), `${name(file)} contains a private string`).toBe(false);
