@@ -19,6 +19,8 @@ services:
       TAVRN_NODE_DOMAIN: ${TAVRN_NODE_DOMAIN:-tavrn.org}
       # /.well-known/tavrn: off | on (static document) | proxy (the node's own document).
       TAVRN_WELLKNOWN: ${TAVRN_WELLKNOWN:-off}
+      # /.well-known/assetlinks.json for the Android app: its release certificate's SHA-256 fingerprint; empty = 404.
+      TAVRN_ANDROID_CERT_SHA256: ${TAVRN_ANDROID_CERT_SHA256:-}
       # Optional Uptime Kuma: base URL as this container reaches it (e.g. http://uptime-kuma:3001) and status page slug.
       UPTIME_KUMA_URL: ${UPTIME_KUMA_URL:-}
       UPTIME_KUMA_PAGE: ${UPTIME_KUMA_PAGE:-}

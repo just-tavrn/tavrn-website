@@ -218,6 +218,7 @@ in.
 | `TAVRN_NODE_WS_URL` | derived from `TAVRN_NODE_URL` | WebSocket endpoint in the delegation document |
 | `TAVRN_NODE_DOMAIN` | `tavrn.org` | Identity domain in the delegation document |
 | `TAVRN_WELLKNOWN` | `off` | `/.well-known/tavrn`: `off` (404), `on` (static document from these variables), `proxy` (the node's own document) |
+| `TAVRN_ANDROID_CERT_SHA256` | empty | `/.well-known/assetlinks.json` for the Android app `org.tavrn.app`: the SHA-256 fingerprint of its release certificate (`AA:BB:…`); empty: 404 (deploy/README.md "Android app") |
 | `UPTIME_KUMA_URL` | empty | Uptime Kuma base URL as the container reaches it (for example `http://uptime-kuma:3001`); the container proxies the status page's two API endpoints as `/uptime/api/status-page/…`, because Kuma sends no CORS headers |
 | `UPTIME_KUMA_PAGE` | empty | Slug of Uptime Kuma's public status page |
 | `GITHUB_READ_TOKEN` | empty | Read-only GitHub token (Issues and Contents: read-only) for the known-issues page and the download page: the container forwards `GET /gh/issues` (the issue search), `GET /gh/releases/web`, `GET /gh/releases/node` (the release lists) and `GET /gh/repos/web` (whether `tavrn-web` is private) to GitHub's API with it, without anything from the visitor; empty: `/gh/*` is 404, the known-issues page links to GitHub and the download page says there is no release yet |
