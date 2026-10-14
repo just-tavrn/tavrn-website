@@ -53,6 +53,17 @@ messages**. Keep both.
 A passkey can replace the password: **Sign in with a passkey** needs nothing else. Passkeys marked **unlocks
 messages** can also unlock your encrypted messages on a new device, just like the recovery key.
 
+**Settings → Security** says for every passkey whether it does:
+
+- **unlocks messages**: ready.
+- **can unlock messages: not enabled yet**, or **message unlock not confirmed**: choose **Enable message unlock**
+  on a device whose messages are unlocked and confirm once with that passkey. This is needed for a passkey you
+  added while the device was locked, and for authenticators that report the needed extension only when they are
+  used.
+- **cannot unlock messages here**: the passkey signs you in, but its authenticator cannot unlock messages. Most
+  security keys can; Windows Hello can only on Windows 11 24H2 or 25H2 with the February 2026 update or newer. The
+  button stays, so you can try again after a system update.
+
 ## Your devices
 
 Every browser and app you sign in with is a separate device with its own keys. A new device asks for your recovery

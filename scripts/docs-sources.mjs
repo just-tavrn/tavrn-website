@@ -96,6 +96,10 @@ export const DOCUMENTS = [
           description: "Node administration, spam bursts, reports, content auto-moderation and history restores after a key reset.",
         },
         "threads-and-forum-channels": { slug: "threads-and-forums", label: "Threads and forums" },
+        polls: {
+          slug: "polls",
+          description: "Polls and date polls on a tavrn node: what the node sees, the Create polls permission, closing and the limits.",
+        },
         "the-doctor-and-other-cli-commands": {
           slug: "doctor-and-cli",
           label: "Doctor and CLI",
@@ -257,6 +261,14 @@ export const DOCUMENTS = [
   },
   {
     repo: "tavrn-web",
+    path: "docs/ANDROID.md",
+    slug: "docs/developers/web/android",
+    label: "Android app",
+    description: "The Android app: the desktop app's Tauri shell built for Android, with push through UnifiedPush, voice in the background, biometric unlock and screen sharing.",
+    order: 25,
+  },
+  {
+    repo: "tavrn-web",
     path: "docs/ACCESSIBILITY.md",
     slug: "docs/developers/web/accessibility",
     label: "Accessibility",
@@ -305,9 +317,8 @@ export const ENV_REFERENCE = {
   label: "Configuration reference",
   // Right after the handbook's "Configuration" page.
   after: "docs/admins/configuration",
-  /** Values that must not be published as they are (the private test node, a private address). */
+  /** Values that must not be published as they are (a private address). */
   overrides: {
-    TAVRN_REFERENCE_NODES: { display: "the project owner's public test node (see the description)" },
     TAVRN_SMTP_URL: { value: "smtp://192.0.2.10:8025" },
   },
   /** Sections, each starting at the comment block above its first variable. */

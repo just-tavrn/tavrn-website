@@ -1,6 +1,6 @@
 ---
 title: Moderation for room owners
-description: Roles and permissions, category and channel overrides, kicks, bans and timeouts, reports, auto-moderation and the audit log.
+description: Roles and permissions, viewing the room as a role, category and channel overrides, kicks, bans and timeouts, reports, auto-moderation and the audit log.
 sidebar:
   order: 10
 ---
@@ -25,6 +25,15 @@ Permissions come in layers. Roles give the base. A **category** can change a rol
 channels, and a **channel** can change them again for itself; the channel wins. A switch left at "–" takes the
 value from the layer below, which is shown in grey. **Reset to category** removes a channel's own changes. Members
 only see the channels they may view.
+
+## Viewing the room as a role
+
+To check what a role really gets, choose **Roles → View room as this role**. The room then looks the way it looks
+for a member with only that role (or only `@everyone`; you can add further roles and a join date): the channels
+they see, what they may do in each, the menus and the settings. A banner "Viewing as …" with **Exit preview** stays
+on every page of the room. The preview runs only on your device and changes nothing: sending, voice, uploads and
+every other change are switched off while it lasts. In encrypted channels the history a new member with that role
+would not get is cut off at "History for this role starts here".
 
 ## Keeping order
 
