@@ -19,8 +19,8 @@ the code, copied here every time the website is built.
 - **To write a bot**, read [applications and bots](/docs/developers/protocol/applications/) and the bot runtime
   [`@tavrn/bot`](/docs/developers/sdk/bot/). Bots are visible members of encrypted channels and read only what
   they are allowed to see.
-- **To work on the web client or the desktop app**, see the [web client](/docs/developers/web/client/) and
-  [desktop app](/docs/developers/web/desktop/) pages.
+- **To work on the web client or the apps**, see the [web client](/docs/developers/web/client/),
+  [desktop app](/docs/developers/web/desktop/) and [Android app](/docs/developers/web/android/) pages.
 - **To run a node**, the [node admin pages](/docs/admins/overview/) are the place to go.
 
 ## The repositories

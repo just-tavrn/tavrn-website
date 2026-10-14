@@ -1,6 +1,6 @@
 ---
 title: Messages
-description: Formatting, replies, reactions, emojis, mentions, pins, threads, spoilers, attachments and slash commands.
+description: Formatting, replies, reactions, emojis, mentions, polls, pins, threads, spoilers, attachments and slash commands.
 sidebar:
   order: 4
 ---
@@ -29,8 +29,36 @@ and press Ctrl+Shift+S; readers reveal it with a click. Attachments can be marke
 
 <Screenshot scene="emoji-picker-desktop" />
 
+Emojis in a message are a little larger than the text, and a message of only one to three emojis shows them at
+twice the size. Country flags show as flags everywhere, also on Windows, whose own emoji font has none.
+
 Mention people with `@name` (or `@name@domain` for someone on another node), a whole role with `@Role`, or
-everyone with `@everyone` where you may. Mentions notify the people you name.
+everyone with `@everyone` where you may. Mentions notify the people you name. In the message they show as small
+highlighted labels; a mention of you, `@everyone` and `@here` stand out in a warning colour, and the whole message
+that mentions you is tinted.
+
+## Polls
+
+Ask a question with a **poll**: choose **＋** next to the message box and then **Poll** or **Date poll**, or type
+`/poll` followed by the question. Polls work in text, announcement and forum channels, in threads and in direct
+messages. In a room they need the permission *Create polls*, which everyone who may write has unless the room
+changes it.
+
+- A **poll** has 2 to 20 options, with a single answer or "Allow several answers".
+- A **date poll** finds a date: pick days in the calendar, each one all day or with times, and everybody answers
+  each of them with **Yes**, **Maybe** or **No**. Times are shown in each reader's own time zone.
+- **Show results** always, only after voting, or only when the poll closes; **votes** public (who voted for what)
+  or hidden until the poll closes; and when the poll **closes**: never, after an hour, a day, a week, or at a time
+  you pick.
+
+Vote with the buttons in the message; **Change vote** and **Retract vote** work until the poll closes. Results show
+bars with the number of votes, and a date poll puts the best dates on top, with **Show all answers** for the full
+grid. The author, or a moderator with *Manage messages*, can **Close poll now**. A poll cannot be edited after it is
+sent.
+
+In an encrypted conversation the question, the options and every vote are end-to-end encrypted; the node only sees
+that somebody voted and when the poll closes. "Hidden" results and votes are a promise of the apps, not anonymity:
+every member's app can read all votes, and the poll composer says so.
 
 ## Pins and threads
 
@@ -65,6 +93,7 @@ are. A few examples:
 | `/me` | Sends an action in the third person |
 | `/shrug` | Appends a shrugging emoticon to your message |
 | `/nick` | Sets your nickname in this room |
+| `/poll` | Opens the poll composer with your question |
 | `/whiteboard` | Opens the shared whiteboard of the conversation |
 | `/timeout`, `/kick`, `/ban` | Moderation commands, for members with the permission |
 

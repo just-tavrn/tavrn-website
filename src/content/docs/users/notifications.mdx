@@ -41,8 +41,9 @@ also for incoming calls, while its window is not in front.
 ## Push notifications
 
 Push notifications reach you while tavrn is closed. Turn them on under **Settings → Notifications → Push
-notifications** in each browser or installed app separately, and send a test push to check that they arrive. They
-only arrive while no tavrn tab is open on that device.
+notifications** in each browser or installed app separately, and send a test push to check that they arrive.
+Message pushes only arrive while no tavrn tab is open on that device; incoming calls also ring through a push while
+a tab is open in the background. The Android app receives pushes through UnifiedPush, without Google services.
 
 - Pushes for encrypted conversations only name the conversation and the sender. For unencrypted channels you can
   choose to see the beginning of the message.

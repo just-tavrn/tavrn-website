@@ -1,6 +1,6 @@
 ---
 title: Voice, video and screen sharing
-description: Joining voice channels, push-to-talk, noise suppression, the camera, screen sharing, the soundboard and calls in direct messages.
+description: Joining voice channels, the channel status, push-to-talk, muting people for yourself, the camera, screen sharing with sound, the soundboard and calls in direct messages.
 sidebar:
   order: 5
 ---
@@ -20,6 +20,14 @@ buttons to mute, deafen and leave at hand, and shows the connection quality, als
 
 If your connection drops, tavrn reconnects by itself; the others see a small plug on your avatar meanwhile.
 
+To switch to another voice channel, click it, or drag your own name from the channel list onto it. A channel you
+may not join shows a red outline and refuses the drop.
+
+The header of a voice channel shows how long the current session has been running, the same for everyone, also
+for those who join late, and a **status** line under the channel's name, such as "Raid at nine". Members with the
+permission *Set voice channel status* click the line (or its pencil) to change it: Enter saves, Escape cancels. The
+channel list shows both when you point at a voice channel.
+
 ## Microphone, push-to-talk and noise suppression
 
 Everything is under **Settings → Voice & video**, saved for each device:
@@ -30,15 +38,34 @@ Everything is under **Settings → Voice & video**, saved for each device:
   automatic gain and a noise gate are there too.
 - **Tests**: "Hear yourself" plays your microphone back as others hear it, "Record and play back" records five
   seconds.
+- **Remind me when I talk while muted** (on by default): when you speak while your microphone is muted, tavrn plays
+  a soft double tap, the microphone button pulses and a short notice says so. Nothing is sent while you are muted;
+  your microphone is only listened to on your device. A released push-to-talk key does not count as muted.
+- **Notification sounds**: the sounds for people joining and leaving, mute, deafen, streams and the connection, each
+  with its own switch and a button to play it, and their volume.
 
 A right-click on the microphone or headphones button opens a quick menu with your devices and volume sliders. You
 can also set the volume of each person from their menu.
 
+**Mute for you**, in a person's menu, silences their voice and their stream on your device only; nobody is told.
+Their tile and their entry in the member list show a crossed speaker (a click on it lifts the mute), and the call
+header counts how many people you muted this way. Reloading the page makes everybody audible again.
+
 ## Camera and screen sharing
 
-Turn the camera on from the call controls; the settings offer background blur or an image behind you. **Share
-screen** asks your browser which screen, window or tab to share, optionally with its sound. The node decides the
-highest resolution and frame rate.
+Turn the camera on from the call controls; the settings offer background blur or an image behind you. On phones
+and tablets, a long press on the camera button switches between the front and the back camera.
+
+**Share screen** first asks for the resolution, the frame rate and the sound, then your browser asks which screen,
+window or tab to share. The node decides the highest resolution and frame rate. For the sound you choose **No
+sound** or **Whole system** (everything your computer plays); a line under the choice says what works where you
+are. Chrome and Edge 141 or newer on Windows and macOS, and the Windows app, leave the call itself out of the shared
+sound, so nobody hears themselves. Where that is not possible, sharing starts without sound and warns you: use
+headphones if you turn it on. Firefox, Safari, the Linux app and the macOS app share no sound with a screen; the
+Android app can share the sound of other apps.
+
+Nobody receives a stream until they join it: a shared screen shows as a tile with the name and **Join stream**, and
+**Leave stream** stops watching again. The whiteboard is a tile of its own in the same way.
 
 ## Soundboard
 
