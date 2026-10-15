@@ -91,7 +91,7 @@
   "tour.polls.text": "Ask the channel, or find the evening that suits most. Results show after voting, and in encrypted channels the votes are encrypted too.",
   "tour.files.tab": "Files",
   "tour.files.title": "Shared folders",
-  "tour.files.text": "A folder tree per channel for the files a community keeps. Files channels are not end-to-end encrypted, and the app says so all the time.",
+  "tour.files.text": "A folder tree per channel for the files a community keeps. End-to-end encrypted by default, down to file and folder names, and a room can keep its files on its own WebDAV or S3 storage. A channel created without encryption says so all the time.",
   "tour.moderation.tab": "Moderation",
   "tour.moderation.title": "Roles and permissions",
   "tour.moderation.text": "Roles with plain switches for every permission, overrides per channel, an audit log and reports.",
