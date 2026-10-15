@@ -6,11 +6,12 @@
 //
 // Every scene runs in its own step: a failing scene is logged and skipped, the others still run, and the test fails
 // at the end with the list of failed steps. Each capture is recorded in manifest.json with its alt text and caption.
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn, type ChildProcess } from "node:child_process";
 import { createHmac } from "node:crypto";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { expect, test, type Browser, type Locator, type Page } from "@playwright/test";
 
 const NODE = `http://127.0.0.1:${process.env.SHOTS_NODE_PORT ?? "8700"}`;
@@ -148,6 +149,7 @@ interface Demo {
 async function register(browser: Browser, username: string, displayName: string, capture = false): Promise<Demo> {
   const context = await browser.newContext({ viewport: DESKTOP, deviceScaleFactor: 2, locale: "en-US", colorScheme: "dark", permissions: ["microphone", "camera"] });
   await context.addInitScript(fakeScreen, `data:image/png;base64,${asset("screen-share").toString("base64")}`);
+  await context.addInitScript(deviceNames);
   await context.addInitScript(() => localStorage.setItem("tavrn.voice.settings", JSON.stringify({ cuesOff: true })));
   const page = await context.newPage();
   allPages.push(page);
@@ -210,6 +212,31 @@ function fakeScreen(picture: string) {
     setInterval(draw, 100);
     return canvas.captureStream(10);
   };
+}
+
+/**
+ * Chromium's fake capture devices are called "Fake Audio Input 1" and the like; the voice quick menus list them by
+ * name. In the page (init script), enumerateDevices returns the same devices under the names of ordinary hardware.
+ */
+function deviceNames() {
+  const names: Record<string, string> = {
+    "Fake Default Audio Input": "Studio microphone (USB)",
+    "Fake Audio Input 1": "Headset microphone",
+    "Fake Audio Input 2": "Webcam microphone",
+    "Fake Default Audio Output": "Speakers",
+    "Fake Audio Output 1": "Headset",
+    "Fake Audio Output 2": "Monitor speakers",
+    fake_device_0: "HD webcam",
+  };
+  const devices = navigator.mediaDevices;
+  if (!devices?.enumerateDevices) return;
+  const original = devices.enumerateDevices.bind(devices);
+  devices.enumerateDevices = async () =>
+    (await original()).map((d) => {
+      const label = Object.entries(names).reduce((l, [from, to]) => l.replace(from, to), d.label);
+      const plain = { deviceId: d.deviceId, groupId: d.groupId, kind: d.kind, label };
+      return { ...plain, toJSON: () => plain } as MediaDeviceInfo;
+    });
 }
 
 async function api(page: Page, method: "GET" | "POST" | "PATCH" | "PUT", path: string, token: string, data?: unknown) {
@@ -278,6 +305,44 @@ test.use({
 
 const auth = (token: string) => ({ Authorization: `Bearer ${token}` });
 
+// ---- The Raid Planner bot (raid-planner-bot.ts, for the components scenes) ------------------------------------
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+let bot: ChildProcess | null = null;
+process.on("exit", () => {
+  if (bot && bot.exitCode === null) bot.kill("SIGTERM");
+});
+
+/**
+ * Starts raid-planner-bot.ts with the application's token on the @tavrn/bot of the tavrn-web checkout (vite-node of
+ * its e2e package, the working directory of the run) and waits for its `ready` line.
+ */
+async function startBot(token: string): Promise<ChildProcess> {
+  const dir = mkdtempSync(join(tmpdir(), "tavrn-shots-bot-"));
+  process.on("exit", () => rmSync(dir, { recursive: true, force: true }));
+  const child = spawn(join(process.cwd(), "node_modules", ".bin", "vite-node"), [join(HERE, "raid-planner-bot.ts")], {
+    cwd: process.cwd(),
+    stdio: ["ignore", "pipe", "pipe"],
+    env: { ...process.env, TAVRN_BOT_NODE: NODE, TAVRN_BOT_TOKEN: token, TAVRN_BOT_KEY_FILE: join(dir, "key.txt"), TAVRN_BOT_STATE_DIR: join(dir, "state") },
+  });
+  let log = "";
+  child.stderr?.on("data", (d: Buffer) => (log = (log + d.toString()).slice(-4000)));
+  await new Promise<void>((ready, fail) => {
+    const timer = setTimeout(() => fail(new Error(`Raid Planner bot not ready:\n${log}`)), 60_000);
+    child.stdout?.on("data", (d: Buffer) => {
+      if (d.toString().includes("ready ")) {
+        clearTimeout(timer);
+        ready();
+      }
+    });
+    child.on("exit", (code) => {
+      clearTimeout(timer);
+      fail(new Error(`Raid Planner bot exited (${code}):\n${log}`));
+    });
+  });
+  return child;
+}
+
 /** Uploads one of the illustrated emblems as a room's icon. */
 async function roomIcon(owner: Demo, roomId: string, name: string) {
   const resp = await owner.page.request.put(`${NODE}/api/v1/rooms/${roomId}/icon`, { headers: { ...auth(owner.token), "Content-Type": "image/png" }, data: asset(name) });
@@ -338,7 +403,7 @@ test("screenshots", async ({ browser }) => {
   });
   const mod = [2, 11, 12, 13, 14, 15, 19, 20, 25].reduce((m, n) => m | bit(n), 0n);
   const lead = [5, 19, 20, 25, 30].reduce((m, n) => m | bit(n), 0n);
-  await api(mira.page, "POST", `/rooms/${room.id}/roles`, mira.token, { name: "Night Owl", color: "#9b8cff", hoist: false, permissions: "0", position: 1 });
+  const roleOwl = await api(mira.page, "POST", `/rooms/${room.id}/roles`, mira.token, { name: "Night Owl", color: "#9b8cff", hoist: false, permissions: "0", position: 1 });
   const roleLead = await api(mira.page, "POST", `/rooms/${room.id}/roles`, mira.token, { name: "Raid Lead", color: "#f0a35e", hoist: true, permissions: lead.toString(), position: 2 });
   const roleMod = await api(mira.page, "POST", `/rooms/${room.id}/roles`, mira.token, { name: "Moderator", color: "#04cfc7", hoist: true, permissions: mod.toString(), position: 3 });
   for (const member of [jonas, lena, theo, kai]) {
@@ -348,6 +413,19 @@ test("screenshots", async ({ browser }) => {
   const users = Object.fromEntries((await api(mira.page, "GET", `/rooms/${room.id}/members`, mira.token)).map((m: { user: { username: string; id: string } }) => [m.user.username, m.user.id]));
   await api(mira.page, "PATCH", `/rooms/${room.id}/members/${users.jonas}`, mira.token, { roles: [roleMod.id] });
   await api(mira.page, "PATCH", `/rooms/${room.id}/members/${users.lena}`, mira.token, { roles: [roleLead.id] });
+  for (const u of ["theo", "kai"]) await api(mira.page, "PATCH", `/rooms/${room.id}/members/${users[u]}`, mira.token, { roles: [roleOwl.id] });
+  // A private channel for the officers (the access mark in the channel list; hidden in the role preview).
+  const officers = await api(mira.page, "POST", `/rooms/${room.id}/channels`, mira.token, { kind: "text", name: "officers", encrypted: true, topic: "Raid leads and moderators", category_id: category });
+  const everyone = ((await api(mira.page, "GET", `/rooms/${room.id}`, mira.token)).roles as { id: string; is_everyone: boolean }[]).find((r) => r.is_everyone)!.id;
+  const override = (channel: string, subject: string, allow: bigint, deny: bigint) =>
+    api(mira.page, "PUT", `/rooms/${room.id}/overrides`, mira.token, { target_type: "channel", target_id: channel, subject_type: "role", subject_id: subject, allow: allow.toString(), deny: deny.toString() });
+  await override(officers.id, everyone, 0n, bit(0));
+  await override(officers.id, roleMod.id, bit(0), 0n);
+  await override(officers.id, roleLead.id, bit(0), 0n);
+  // Only the leads upload into shared-files: "read only" for everybody else (the restricted mark in the preview).
+  await override(files.id, everyone, 0n, bit(3));
+  await override(files.id, roleMod.id, bit(3), 0n);
+  await override(files.id, roleLead.id, bit(3), 0n);
 
   // ---- The conversation in #general (end-to-end encrypted: every message is sent through the UI) ----------------
   // Everybody opens every encrypted channel once first: a member joins a channel's MLS group when opening it, and
@@ -412,6 +490,45 @@ test("screenshots", async ({ browser }) => {
   await send(lena.page, "Pull timer stays at 10 seconds so everyone can buff.");
   await mira.page.reload();
   await expect(message(mira.page, "Pull timer")).toBeVisible({ timeout: 30_000 });
+
+  // ---- A poll in #raid-strategy (encrypted: created and voted on through the UI) ------------------------------
+  await step("poll", async () => {
+    const question = "Which boss do we learn first in Season 4?";
+    const answers = ["Crystal Golem", "The Drowned King", "Ashen Twins", "Hollow Matriarch"];
+    await lena.page.goto(strategyUrl);
+    await expect(lena.page.getByLabel("Message", { exact: true })).toBeEnabled({ timeout: 30_000 });
+    await lena.page.getByTestId("composer-plus").click();
+    await lena.page.getByTestId("plus-poll").click();
+    const dialog = lena.page.getByRole("dialog", { name: "Create a poll" });
+    await dialog.getByLabel("Question", { exact: true }).fill(question);
+    for (const [i, answer] of answers.entries()) {
+      if (i >= 2) await dialog.getByTestId("poll-add-option").click();
+      await dialog.getByLabel(`Option ${i + 1}`, { exact: true }).fill(answer);
+    }
+    await dialog.getByText("1 week", { exact: true }).click();
+    await dialog.getByTestId("poll-create").click();
+    await expect(dialog).toBeHidden({ timeout: 20_000 });
+    // Everybody votes (the option ids are o1 … o4 in the order above); Mira last, so her view shows the results.
+    const votes: [Demo, number][] = [[lena, 0], [jonas, 0], [theo, 1], [kai, 0], [mira, 1]];
+    for (const [u, choice] of votes) {
+      if (u !== lena) await u.page.goto(strategyUrl);
+      const poll = u.page.getByTestId("poll").filter({ hasText: question });
+      await expect(poll).toBeVisible({ timeout: 30_000 });
+      await poll.locator(`[data-testid="poll-option"][data-option="o${choice + 1}"]`).getByRole("radio").check();
+      await poll.getByTestId("poll-vote").click();
+      await expect(poll).toHaveAttribute("data-view", "results", { timeout: 20_000 });
+    }
+    const poll = mira.page.getByTestId("poll").filter({ hasText: question });
+    await expect(poll.getByTestId("poll-voters")).toHaveText("5 votes", { timeout: 30_000 });
+    await poll.scrollIntoViewIfNeeded();
+    await shot(mira.page, "poll", { alt: "A poll in the encrypted channel raid-strategy: Which boss do we learn first in Season 4?, with four options, result bars, counts and shares, the names of the voters, Mira's own vote marked as Your vote, Change vote and the remaining time until it closes.", caption: "Polls in a channel: results after voting, with your own vote marked; in encrypted channels the votes are encrypted too.", use: ["landing", "docs"] });
+    await mira.page.setViewportSize(PHONE);
+    await mira.page.goto(strategyUrl);
+    await expect(poll.getByTestId("poll-voters")).toHaveText("5 votes", { timeout: 30_000 });
+    await poll.scrollIntoViewIfNeeded();
+    await shot(mira.page, "poll", { alt: "The same poll on a phone: the question, the four options with their bars and voters, and Mira's vote marked.", caption: "The poll on a phone." });
+  });
+  await mira.page.setViewportSize(DESKTOP);
 
   // ---- Forum channel #guides: tagged posts, a thread open beside the list ------------------------------------
   const guidesUrl = `/rooms/${room.id}/channels/${guides.id}`;
@@ -516,6 +633,8 @@ test("screenshots", async ({ browser }) => {
   // ---- Voice with a camera tile and a screen share -------------------------------------------------------------
   await step("voice", async () => {
     const raidUrl = `/rooms/${room.id}/channels/${raid.id}`;
+    // The channel's status line under its name in the voice header (VOICE.md §2a).
+    await api(mira.page, "PATCH", `/rooms/${room.id}/channels/${raid.id}`, mira.token, { status: "Sunken Citadel prog, pull at 21:15" });
     for (const u of [mira, jonas, lena, theo]) {
       await u.page.goto(raidUrl);
       await u.page.getByTestId("voice-join").click();
@@ -531,6 +650,9 @@ test("screenshots", async ({ browser }) => {
       await theo.page.getByTestId("voice-screen").click();
       await theo.page.getByTestId("screen-share-start").click();
       await expect(mira.page.getByTestId("screen-tile").first()).toBeVisible({ timeout: 30_000 });
+      // Streams are opt-in: Mira joins Theo's.
+      await mira.page.getByTestId("screen-tile").first().getByTestId("stream-join").click({ timeout: 30_000 });
+      await expect(mira.page.getByTestId("screen-tile").first()).toHaveAttribute("data-state", "watching", { timeout: 30_000 });
     } catch (e) {
       screenShared = false;
       console.warn("screen share failed:", e);
@@ -546,12 +668,23 @@ test("screenshots", async ({ browser }) => {
     // The shared screen large, the camera and avatar tiles in a row beside it.
     await mira.page.getByTestId("screen-focus").first().click({ timeout: 5_000 }).catch(() => undefined);
     await mira.page.waitForTimeout(2500); // the screen share reaches full quality
-    await shot(mira.page, "voice", { alt: "The voice channel Raid Night with four participants: Theo's shared screen showing a party facing a crystal golem, Mira's camera tile, and the illustrated avatars of Jonas and Lena on their tiles, with End-to-end encrypted in the header and the call controls at the bottom.", caption: "Voice, video and screen sharing, end-to-end encrypted with keys from the channel's MLS group.", use: ["landing", "docs"] });
+    await shot(mira.page, "voice", { alt: "The voice channel Raid Night with four participants: Theo's shared screen showing a party facing a crystal golem, Mira's camera tile, and the illustrated avatars of Jonas and Lena on their tiles; the header shows the channel status Sunken Citadel prog, pull at 21:15, the session timer and End-to-end encrypted, the call controls are at the bottom.", caption: "Voice, video and screen sharing, end-to-end encrypted with keys from the channel's MLS group.", use: ["landing", "docs"] });
     await mira.page.setViewportSize(PHONE);
     await mira.page.waitForTimeout(1500);
     await shot(mira.page, "voice", { alt: "The voice stage on a phone with the shared boss fight, Mira's camera tile, the avatar tiles of Jonas and Lena and the call controls.", caption: "The voice stage on a phone.", use: ["landing", "docs"] });
   });
   await mira.page.setViewportSize(DESKTOP);
+  // The header's status line and session timer, and the quick menu of the microphone button (a right-click).
+  await step("voice-status", async () => {
+    await expect(mira.page.getByTestId("voice-status")).toHaveText("Sunken Citadel prog, pull at 21:15", { timeout: 15_000 });
+    await expect(mira.page.getByTestId("voice-session-timer")).toBeVisible({ timeout: 15_000 });
+    await mira.page.waitForTimeout(1500);
+    const stageMic = mira.page.getByTestId("voice-stage").getByTestId("voice-mute");
+    await ((await stageMic.count()) ? stageMic.first() : mira.page.getByTestId("voice-mute").last()).click({ button: "right" });
+    await expect(mira.page.getByRole("menu").last()).toBeVisible();
+    await shot(mira.page, "voice-status", { alt: "The voice channel Raid Night during a session: the header with the channel's status line Sunken Citadel prog, pull at 21:15 and the running session timer, and the quick menu of the microphone button with the microphones, push-to-talk, the input volume and the voice settings.", caption: "Voice channels carry a status line and a session timer; a right-click on the microphone or headphones button switches devices and volumes during the call." }, { keepMouse: true });
+    await mira.page.keyboard.press("Escape");
+  });
   for (const u of [theo, lena, jonas, mira]) await u.page.getByTestId("voice-leave").first().click({ timeout: 5_000 }).catch(() => undefined);
 
   // ---- Whiteboard on #raid-strategy --------------------------------------------------------------------------
@@ -623,6 +756,35 @@ test("screenshots", async ({ browser }) => {
     await mira.page.getByTestId("role-list").getByText("Moderator").click();
     await expect(mira.page.getByTestId("role-editor")).toBeVisible();
     await shot(mira.page, "roles", { alt: "The role editor in the room settings with the Moderator role selected: name, colour, show separately and the permission switches.", caption: "Roles and permissions: hierarchy, colour, show separately in the member list, and fine-grained permission switches." });
+  });
+
+  // ---- The room seen as the Night Owl role (a preview on the device, read-only) ---------------------------------
+  await step("view-as-role", async () => {
+    await mira.page.goto(`/rooms/${room.id}/settings/roles`);
+    await mira.page.getByTestId("role-list").getByText("Night Owl").click();
+    await mira.page.getByTestId("view-as-role").click();
+    const dialog = mira.page.getByTestId("view-as-dialog");
+    await expect(dialog).toBeVisible();
+    const owl = dialog.locator('[data-testid="view-as-role-option"][data-role="Night Owl"]');
+    if (!(await owl.isChecked())) await owl.check();
+    // Joined yesterday: the whole encrypted history of the demo is inside the role's history window.
+    const d = new Date(Date.now() - 86_400_000);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    await dialog.getByTestId("view-as-joined").fill(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`);
+    await dialog.getByTestId("view-as-start").click();
+    const banner = mira.page.getByTestId("role-preview-banner");
+    await expect(banner).toContainText("Viewing as Night Owl", { timeout: 15_000 });
+    await expect(mira.page.getByTestId("channel-name")).toBeVisible();
+    await mira.page.evaluate((to) => {
+      window.history.pushState({}, "", to);
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    }, general);
+    await expect(mira.page.getByTestId("channel-name")).toHaveText("general", { timeout: 15_000 });
+    await expect(message(mira.page, "Welcome to")).toBeVisible({ timeout: 30_000 });
+    await expect(mira.page.getByTestId("channel-row").filter({ hasText: "officers" })).toHaveCount(0);
+    await shot(mira.page, "view-as-role", { alt: "The room Night Owls Gaming previewed as the role Night Owl: a banner Viewing as Night Owl with Exit preview above the channel general, the private channel officers missing from the channel list and the files channel shared-files marked read only for the role, the conversation and the composer as a member with that role sees them.", caption: "View the room as a role: room settings show what a member with only that role sees and may do, read-only on your device." });
+    await mira.page.getByTestId("role-preview-exit").click();
+    await expect(banner).toHaveCount(0);
   });
 
   // ---- Files channel ----------------------------------------------------------------------------------------
@@ -700,6 +862,8 @@ test("screenshots", async ({ browser }) => {
   });
 
   // ---- Applications: consent screen, install, bot and webhook messages with embeds ---------------------------
+  let planner: { secret: string; username: string } | null = null;
+  const signupsUrl = `/rooms/${room.id}/channels/${signups.id}`;
   await step("bots", async () => {
     const perms = (bit(0) | bit(1) | bit(4) | bit(25)).toString();
     const app = await api(lena.page, "POST", "/applications", lena.token, { name: "Raid Planner", description: "Schedules raids, tracks sign-ups and reminds everyone an hour before the pull.", public: true, requested_permissions: perms });
@@ -716,7 +880,7 @@ test("screenshots", async ({ browser }) => {
     await shot(mira.page, "consent", { alt: "The consent screen for adding the bot Raid Planner to the room Night Owls Gaming, listing its owner, the permissions it asks for and a notice that a bot reads the encrypted channels it can view.", caption: "Adding a bot: who owns it, the permissions it asks for, and a plain notice about encrypted channels." });
     await api(mira.page, "POST", `/rooms/${room.id}/applications`, mira.token, { application: `localhost/${app.id}`, permissions: perms });
     const botToken = await api(lena.page, "POST", `/applications/${app.id}/tokens`, lena.token, { name: "main" });
-    const signupsUrl = `/rooms/${room.id}/channels/${signups.id}`;
+    planner = { secret: botToken.secret, username: app.bot.username };
     await lena.page.goto(signupsUrl);
     await send(lena.page, "Sign-ups for Friday are open, Raid Planner keeps the list. Tell it your role with `/signup` 🙌");
     await api(lena.page, "POST", `/rooms/${room.id}/channels/${signups.id}/messages`, botToken.secret, {
@@ -759,6 +923,93 @@ test("screenshots", async ({ browser }) => {
     await mira.page.getByTestId("room-application-commands").first().click().catch(() => undefined);
     await shot(mira.page, "room-applications", { alt: "The Applications tab of the room settings with the installed bot Raid Planner, its permissions and its three slash commands, each with a switch.", caption: "Installed applications per room, with their permissions and commands." });
   });
+
+  // ---- A date poll in #raid-signups (plaintext; created and answered through the UI) ---------------------------
+  await step("poll-date", async () => {
+    const question = "Season 4 launch raid: which evening works for you?";
+    // Three evenings a week from now with three start times each (in the browser's time zone).
+    const days = [7, 8, 9].map((n) => {
+      const d = new Date(Date.now() + n * 86_400_000);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    });
+    const times = ["19:00", "20:30", "22:00"];
+    await lena.page.goto(signupsUrl);
+    await expect(lena.page.getByLabel("Message", { exact: true })).toBeEnabled({ timeout: 30_000 });
+    await lena.page.getByTestId("composer-plus").click();
+    await lena.page.getByTestId("plus-date-poll").click();
+    const dialog = lena.page.getByRole("dialog", { name: "Create a poll" });
+    await dialog.getByLabel("Question", { exact: true }).fill(question);
+    const calendar = dialog.getByTestId("poll-calendar");
+    for (const day of days) {
+      const cell = calendar.locator(`[data-day="${day}"]`);
+      if (!(await cell.count())) await dialog.getByRole("button", { name: "Next month" }).click();
+      await cell.click();
+    }
+    const groups = dialog.getByTestId("poll-day");
+    await expect(groups).toHaveCount(3);
+    for (let d = 0; d < 3; d++) {
+      const group = groups.nth(d);
+      await group.getByText("All day").click();
+      for (let k = 0; k < times.length; k++) {
+        if (k > 0) await group.getByTestId("poll-add-time").click();
+        await group.getByTestId("poll-time-start").nth(k).fill(times[k]!);
+      }
+    }
+    await expect(dialog.getByTestId("poll-zone")).toContainText("9 of 60 slots");
+    await dialog.getByText("1 week", { exact: true }).click();
+    await dialog.getByTestId("poll-create").click();
+    await expect(dialog).toBeHidden({ timeout: 20_000 });
+    // The answers per slot (s1 … s9: day by day, then by time): yes, maybe or no.
+    const answers: [Demo, string][] = [
+      [lena, "yyn mym nnn"],
+      [jonas, "ymm yyn myn"],
+      [theo, "myy yyy nmy"],
+      [kai, "nyy yym nny"],
+      [mira, "yyn yyy mnn"],
+    ];
+    const label = { y: "Yes", m: "Maybe", n: "No" } as const;
+    for (const [u, pattern] of answers) {
+      if (u !== lena) await u.page.goto(signupsUrl);
+      const poll = u.page.getByTestId("poll").filter({ hasText: question });
+      await expect(poll).toBeVisible({ timeout: 30_000 });
+      const marks = pattern.replace(/ /g, "").split("") as (keyof typeof label)[];
+      for (const [i, m] of marks.entries()) await poll.locator(`[data-testid="poll-slot"][data-slot="s${i + 1}"]`).locator("label", { hasText: label[m] }).click();
+      await poll.getByTestId("poll-vote").click();
+      await expect(poll).toHaveAttribute("data-view", "results", { timeout: 20_000 });
+    }
+    const poll = mira.page.getByTestId("poll").filter({ hasText: question });
+    await expect(poll.getByTestId("poll-voters")).toHaveText("5 votes", { timeout: 30_000 });
+    await poll.scrollIntoViewIfNeeded();
+    await shot(mira.page, "poll-date", { alt: "A date poll in the channel raid-signups, Season 4 launch raid: which evening works for you?, showing the results as a compact grid with three evenings as columns and three start times as rows, yes and maybe counts per slot, a star on the best slot, which is summarised above the grid, and Mira's own answers as badges.", caption: "Date polls find the evening that suits most: the results are a compact grid of days and times, shown in your own time zone.", use: ["docs"] });
+  });
+
+  // ---- Message components: the Raid Planner's sign-up card with buttons, a select menu and a form -------------
+  await step("components", async () => {
+    if (!planner) throw new Error("the bots step did not create the Raid Planner");
+    bot = await startBot(planner.secret);
+    await lena.page.goto(signupsUrl);
+    await send(lena.page, `@${planner.username} post the sign-up card for Friday, please`);
+    await mira.page.goto(signupsUrl);
+    const card = mira.page.getByTestId("message").filter({ has: mira.page.getByTestId("message-components") }).last();
+    await expect(card).toBeVisible({ timeout: 45_000 });
+    await card.getByRole("button", { name: /Sign up/ }).click();
+    await expect(card.getByTestId("interaction-ephemeral")).toBeVisible({ timeout: 20_000 });
+    await card.getByTestId("component-select-trigger").click();
+    await expect(card.getByRole("listbox")).toBeVisible();
+    await card.scrollIntoViewIfNeeded();
+    await shot(mira.page, "components", { alt: "A message of the bot Raid Planner in the channel raid-signups: a sign-up card with an embed of tanks, healers and damage, the buttons Sign up, Bench me, Leave a note and the link button Raid guide, and the select menu Choose your role open with Tank, Healer and Damage and their descriptions; under the card the bot's answer You are on the list for Friday, marked Only you can see this.", caption: "Bots can add buttons, select menus and forms to their messages, drawn with the app's own controls; an answer can be visible to you alone.", use: ["landing", "docs"] });
+    await mira.page.keyboard.press("Escape");
+    await card.getByRole("button", { name: /Leave a note/ }).click();
+    const form = mira.page.getByRole("dialog", { name: "A note for the raid lead" });
+    await expect(form).toBeVisible({ timeout: 20_000 });
+    await form.getByLabel("When can you be there?").fill("20:45");
+    await form.locator("textarea").first().fill("I can tank the first pull if Jonas is late, and I will bring flasks for everyone.");
+    await mira.page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await shot(mira.page, "components-modal", { alt: "The form A note for the raid lead that the Raid Planner bot opened after a click on Leave a note: the bot's name with the BOT badge, a one-line field When can you be there? with 20:45 and a note field with a character counter, and the buttons Cancel and Send.", caption: "A bot's form opens as a dialog of the app; required fields and lengths are checked before anything is sent." });
+    await form.getByTestId("component-modal-submit").click();
+    await expect(form).toBeHidden({ timeout: 20_000 });
+  });
+  if (bot && bot.exitCode === null) bot.kill("SIGTERM");
 
   // ---- Moderation: auto-moderation rules and a report --------------------------------------------------------
   await step("automod", async () => {
@@ -847,9 +1098,15 @@ test("screenshots", async ({ browser }) => {
     } catch (e) {
       console.warn("verification failed:", e);
     }
+    // Theo hangs out in the Lounge: the friends list says where (and the rail's room icon carries the voice badge).
+    await theo.page.goto(`/rooms/${room.id}/channels/${voice.id}`);
+    await theo.page.getByTestId("voice-join").click();
+    await expect(theo.page.getByTestId("voice-stage")).toBeVisible({ timeout: 30_000 });
     await mira.page.goto("/friends");
     await expect(mira.page.getByTestId("friends-list").locator("li")).toHaveCount(3, { timeout: 15_000 });
-    await shot(mira.page, "friends", { alt: "The friends page with three friends, Lena Park marked with a verified badge, and an incoming friend request from Kai Brennan with a short message.", caption: "Friends, friend requests and verified contacts: verification compares safety numbers in person or by QR code." });
+    await expect(mira.page.getByTestId("friends-list").getByText(/In voice/)).toBeVisible({ timeout: 20_000 }).catch(() => undefined);
+    await shot(mira.page, "friends", { alt: "The friends page with three friends, Lena Park marked with a verified badge, Theo Laurent shown in voice in the Lounge of Night Owls Gaming, and an incoming friend request from Kai Brennan with a short message.", caption: "Friends, friend requests and verified contacts: verification compares safety numbers in person or by QR code, and a friend in voice shows where." });
+    await theo.page.getByTestId("voice-leave").first().click({ timeout: 5_000 }).catch(() => undefined);
     await mira.page.getByTestId("friends-list").locator("li").filter({ hasText: "lena@localhost" }).getByRole("button", { name: "Message" }).click();
     await expect(mira.page.getByTestId("conversation-name")).toBeVisible({ timeout: 30_000 });
     const dmUrl = new URL(mira.page.url()).pathname;
@@ -868,6 +1125,7 @@ test("screenshots", async ({ browser }) => {
   });
 
   // ---- Discover: public rooms of the other members ---------------------------------------------------------
+  const publicRooms: Record<string, { id: string; channels: { id: string; kind: string }[] }> = {};
   await step("discover", async () => {
     const listed: [Demo, string, string, string, Demo[]][] = [
       [kai, "Indie Dev Lounge", "Devlogs, playtests and honest feedback for small game projects. Show us your pixels.", "room-indie-dev", [jonas, theo]],
@@ -876,6 +1134,7 @@ test("screenshots", async ({ browser }) => {
     ];
     for (const [owner, name, description, icon, members] of listed) {
       const r = await api(owner.page, "POST", "/rooms", owner.token, { name, description, join_mode: "public" });
+      publicRooms[name] = r;
       await api(owner.page, "PATCH", `/rooms/${r.id}`, owner.token, { discoverable: true });
       await roomIcon(owner, r.id, icon);
       for (const member of members) await api(member.page, "POST", `/rooms/${r.id}/join`, member.token, {}).catch(() => undefined);
@@ -884,6 +1143,56 @@ test("screenshots", async ({ browser }) => {
     await expect(mira.page.getByTestId("discover-room")).toHaveCount(3, { timeout: 30_000 });
     await expect(mira.page.getByTestId("discover-room").getByTestId("avatar-image")).toHaveCount(3, { timeout: 30_000 }).catch(() => undefined);
     await shot(mira.page, "discover", { alt: "The Discover page listing three public rooms of this node, Late Night Music, Indie Dev Lounge and Study Group, each with an illustrated icon, the member count, a description and a Join button.", caption: "Discover public rooms on this node and on the nodes it knows.", use: ["landing", "docs"] });
+  });
+
+  // ---- Room rail: a folder of three rooms, voice activity, the room card ------------------------------------
+  await step("rail-folders", async () => {
+    const names = ["Late Night Music", "Indie Dev Lounge", "Study Group"];
+    for (const name of names) await api(mira.page, "POST", `/rooms/${publicRooms[name]!.id}/join`, mira.token, {});
+    // Theo and Kai listen in the voice channel of Late Night Music: the room's rail icon gets the voice badge.
+    const music = publicRooms["Late Night Music"]!;
+    const musicVoice = music.channels.find((c) => c.kind === "voice")!;
+    for (const u of [theo, kai]) {
+      await u.page.goto(`/rooms/${music.id}/channels/${musicVoice.id}`);
+      await u.page.getByTestId("voice-join").click();
+      await expect(u.page.getByTestId("voice-stage")).toBeVisible({ timeout: 30_000 });
+    }
+    await mira.page.goto(general);
+    await expect(message(mira.page, "Welcome to")).toBeVisible({ timeout: 30_000 });
+    const rail = mira.page.getByTestId("room-rail");
+    const railRoom = (name: string) => rail.getByRole("link", { name: new RegExp(`^${name}(, .+)?$`) });
+    await expect(railRoom("Study Group")).toBeVisible({ timeout: 30_000 });
+    await rail.getByTestId("rail-end").click({ button: "right" });
+    await mira.page.getByTestId("rail-menu").getByRole("menuitem", { name: "New folder…" }).click();
+    const dialog = mira.page.getByTestId("folder-dialog");
+    await dialog.getByLabel("Name").fill("Hangouts");
+    await dialog.getByText("Violet").click();
+    await dialog.getByRole("button", { name: "Create folder" }).click();
+    await expect(dialog).toHaveCount(0);
+    for (const name of names) {
+      await railRoom(name).click({ button: "right", position: { x: 12, y: 12 } });
+      await mira.page.getByTestId("room-menu").getByRole("menuitem", { name: "Move to folder" }).click();
+      await mira.page.getByTestId("context-submenu").getByRole("menuitem", { name: "Hangouts" }).click();
+      await expect(railRoom(name)).toHaveCount(0);
+    }
+    const folder = rail.getByTestId("rail-folder-button");
+    await expect(folder).toHaveAccessibleName(/^Folder Hangouts, 3 rooms/);
+    await folder.click();
+    await expect(folder).toHaveAttribute("aria-expanded", "true");
+    // The card names the people in voice with the member entries another view loaded: open the room once (in the
+    // app, so the entries stay), then go back to #general.
+    await railRoom("Late Night Music").click();
+    await expect(mira.page.getByText("Theo Laurent").first()).toBeVisible({ timeout: 30_000 });
+    await mira.page.waitForTimeout(1500);
+    await railRoom("Night Owls Gaming").click();
+    await expect(message(mira.page, "Welcome to")).toBeVisible({ timeout: 30_000 });
+    // The room card of Late Night Music (the pointer rests on its icon): members, description and who is in voice.
+    await railRoom("Late Night Music").hover();
+    await expect(mira.page.getByTestId("room-card-participant").locator("img")).toHaveCount(2, { timeout: 15_000 }).catch(() => undefined);
+    await expect(mira.page.getByTestId("room-card-voice")).toBeVisible({ timeout: 15_000 });
+    await shot(mira.page, "rail-folders", { alt: "The room rail on the left with Night Owls Gaming and the expanded violet folder Hangouts holding Late Night Music, Indie Dev Lounge and Study Group; Late Night Music carries a green voice badge, and its room card shows the member count, the description and the avatars of Theo and Kai in its voice channel.", caption: "Group rooms into folders in the rail; badges and the room card show who is in voice without opening the room." }, { keepMouse: true });
+    await mira.page.mouse.move(DESKTOP.width - 2, DESKTOP.height / 2);
+    for (const u of [theo, kai]) await u.page.getByTestId("voice-leave").first().click({ timeout: 5_000 }).catch(() => undefined);
   });
 
   // ---- Legal documents and the legal settings tab ------------------------------------------------------------
@@ -905,6 +1214,10 @@ test("screenshots", async ({ browser }) => {
     await expect(mira.page.getByTestId("admin-stats")).toBeVisible();
     await mira.page.waitForLoadState("networkidle");
     await shot(mira.page, "admin", { alt: "The node administration overview with counters for users, rooms, messages and storage, and the effective configuration of the node.", caption: "Node administration: an overview with counters and the effective configuration.", use: ["landing", "docs"] });
+    await mira.page.goto("/admin/reports");
+    await mira.page.getByTestId("report-row").first().click({ timeout: 15_000 });
+    await expect(mira.page.getByTestId("report-detail")).toBeVisible({ timeout: 15_000 });
+    await shot(mira.page, "admin-reports", { alt: "The Reports tab of the node administration: every report of the node, filtered by status and by who handles it, with the spam report about a message of Kai Brennan in Night Owls Gaming opened: the reporter, the note, the message text the reporter released and the moderation actions.", caption: "Node admins see every report of the node; reports about accounts of other nodes can be forwarded to their home node." });
     await mira.page.goto("/admin/federation");
     await expect(mira.page.getByRole("heading", { name: "Other nodes" })).toBeVisible();
     await shot(mira.page, "admin-federation", { alt: "The Federation tab of the node administration with the form to check another node and the list of known nodes, still empty on this demo node.", caption: "Federation: check other nodes for conformance and see which nodes this one knows." });

@@ -57,7 +57,7 @@ fi
 echo "web client: $(git -C "$TAVRN_WEB" rev-parse --short HEAD 2>/dev/null || echo '?')"
 
 mkdir -p "$TAVRN_WEB/e2e/shots"
-cp "$here/make.ts" "$here/playwright.config.ts" "$TAVRN_WEB/e2e/shots/"
+cp "$here/make.ts" "$here/playwright.config.ts" "$here/raid-planner-bot.ts" "$TAVRN_WEB/e2e/shots/"
 status=0
 (cd "$TAVRN_WEB/e2e" && SHOTS_OUT="$out" SHOTS_ASSETS="$here/assets" SHOTS_MANIFEST="$out/manifest.json" SHOTS_NODE_PORT="$node_port" SHOTS_WEB_PORT="$web_port" \
   npx playwright test -c shots/playwright.config.ts --project chromium --workers=1 2>&1 | tee "$data/playwright.log") || status=$?
