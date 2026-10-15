@@ -159,6 +159,28 @@ describe.skipIf(!built)("built site", () => {
     expect(withActions.sort()).toEqual(Object.keys(legal).sort());
   });
 
+  it("serves the screenshots as WebP only, without a PNG fallback per width", () => {
+    // Shot.astro: every browser in scope reads WebP; the PNG renditions were three quarters of dist/.
+    const shots = pages.flatMap((page) =>
+      [...read(page).matchAll(/<figure\b[^>]*class="[^"]*\bshot\b[^"]*"[^>]*>([\s\S]*?)<\/figure>/g)].map((m) => [page, m[1]!] as const),
+    );
+    expect(shots.length).toBeGreaterThan(0);
+    for (const [page, figure] of shots) {
+      const urls = [...figure.matchAll(/\b(?:src|srcset)="([^"]+)"/g)].flatMap((m) => m[1]!.split(",").map((u) => u.trim().split(/\s+/)[0]!));
+      expect(urls.length, page).toBeGreaterThan(0);
+      for (const url of urls) expect(url, page).toMatch(/\.webp$/);
+    }
+    // No PNG rendition of a screenshot (Astro names them <source name>.<hash>_<transform>.png). Astro still copies the
+    // untransformed original of a screenshot that no page shows (<source name>.<hash>.png); none may be referenced.
+    const sources = readdirSync(join(root, "src/assets/screenshots"))
+      .filter((f) => f.endsWith(".png"))
+      .map((f) => f.slice(0, -4));
+    expect(sources.length).toBeGreaterThan(0);
+    const png = readdirSync(join(dist, "_astro")).filter((f) => f.endsWith(".png") && sources.some((s) => f.startsWith(`${s}.`)));
+    expect(png.filter((f) => f.includes("_")), "PNG renditions of the screenshots in dist/_astro").toEqual([]);
+    for (const page of pages) for (const f of png) expect(read(page), `${page} shows ${f}`).not.toContain(f);
+  });
+
   it("builds every route", () => {
     for (const p of ["/index.html", "/download/index.html", "/status/index.html", "/roadmap/index.html", "/404.html",
       "/legal/index.html", "/legal/imprint/index.html", "/legal/privacy/index.html", "/docs/index.html",

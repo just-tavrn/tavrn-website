@@ -23,11 +23,15 @@ jobs:
     if: ${{ vars.CI_ENABLED == 'true' }}
     uses: just-tavrn/.github/.github/workflows/js-ci.yml@main
     with:
-      # SPDX headers and dependency licenses (the reusable workflow's defaults), astro check, then the build before
-      # the tests, because tests/dist.test.ts checks the built site (JavaScript budget, CSP hashes, no foreign URLs).
-      typecheck: pnpm typecheck
+      # SPDX headers and dependency licenses (the reusable workflow's defaults), the docs sync without any warning
+      # (--strict: no link to a vanished anchor, no configured section or replacement that no longer matches), astro
+      # check, then the build before the tests, because tests/dist.test.ts checks the built site (JavaScript budget,
+      # CSP hashes, no foreign URLs). The build is the run's only one: the e2e job below tests this dist/.
+      typecheck: node scripts/sync-docs.mjs --strict && pnpm typecheck
       test: pnpm build && pnpm test
       build: test -f dist/index.html && test -s csp-script-hashes.txt
+      artifact-name: website-dist
+      artifact-path: dist
       # The docs are synced from the source repositories under sources/ (git submodules, private for now).
       submodules: "true"
     secrets:
@@ -35,8 +39,11 @@ jobs:
 
   e2e:
     name: End-to-end (Chromium, Android emulation)
+    # Against the dist/ of the JavaScript job (no second build: sharp encoded every screenshot again).
+    needs: js
     if: ${{ vars.CI_ENABLED == 'true' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Read access to the private source repositories (submodules)
         env:
@@ -56,7 +63,15 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm build
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: website-dist
+          path: dist
+      - run: test -f dist/index.html
+      # csp-script-hashes.txt lives next to dist/, not in the artifact: the specs' production CSP (e2e/helpers.ts)
+      # reads it. Recomputed from the downloaded dist/ (deterministic: the same hashes the js job wrote).
+      - name: CSP hashes of this dist/
+        run: node scripts/csp-hashes.mjs && test -s csp-script-hashes.txt
       - run: pnpm exec playwright test -c e2e/playwright.config.ts --project chromium --project mobile-android --workers=2
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: ${{ failure() }}
@@ -74,7 +89,8 @@ jobs:
         with:
           persist-credentials: false
       - name: caddy validate
-        run: docker run --rm -v "$PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+        # The Caddy image of deploy/Dockerfile, by digest (Dependabot bumps the Dockerfile; keep the two equal).
+        run: docker run --rm -v "$PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine@sha256:d8542f48d34a9cf4e4c11a478865229840e87e4c96ea3f439101f31a5d35f75f caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 
   publish-check:
     name: Publication hygiene
@@ -91,3 +107,9 @@ jobs:
           # Dependabot's pull requests see only Dependabot secrets; the push to main runs the full check.
           PUBLISH_CHECK_ALLOW_UNCONFIGURED: ${{ github.event_name == 'pull_request' && github.actor == 'dependabot[bot]' && '1' || '' }}
         run: scripts/publish-check.sh
+
+  shared-scripts:
+    # The copies of the organization's shared scripts (SPDX check, publication check, labels, JS licenses) are the
+    # source in just-tavrn/.github apart from their SPDX line (its docs/GITHUB.md "Shared scripts").
+    if: ${{ vars.CI_ENABLED == 'true' }}
+    uses: just-tavrn/.github/.github/workflows/shared-scripts.yml@main

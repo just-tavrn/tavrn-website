@@ -8,6 +8,8 @@
 # Caddy fills into the two legal pages (TAVRN_IMPRINT_*, TAVRN_CONTACT_EMAIL, TAVRN_NODE_HOST) and starts the release
 # map of the desktop update feeds (update-feeds.sh).
 set -eu
+# A failing command inside a pipeline fails the pipeline (POSIX sh 2024; BusyBox's ash in the alpine image has it).
+set -o pipefail
 
 default_node_url=https://app.tavrn.org
 

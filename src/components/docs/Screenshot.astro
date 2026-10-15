@@ -3,6 +3,7 @@
 // A screenshot in the docs, by scene key of the manifest (src/assets/screenshots/manifest.ts): image, alt text and
 // caption come from there. A key the manifest does not know yet falls back to the chat screenshot with a build
 // warning, so a page can name a scene before the screenshot pipeline has produced it. Phone scenes are narrower.
+// WebP only, like Shot.astro: every browser in scope reads it, and PNG renditions per width dominated dist/.
 import { Picture } from "astro:assets";
 import { isPhone, screenshots, type SceneKey } from "../../assets/screenshots/manifest";
 
@@ -24,7 +25,7 @@ const phone = isPhone(key);
     src={shot.image}
     alt={shot.alt}
     formats={["webp"]}
-    fallbackFormat="png"
+    fallbackFormat="webp"
     widths={phone ? [240, 390] : [480, 736, 960, 1472]}
     sizes={phone ? "18rem" : "(min-width: 72rem) 46rem, calc(100vw - 2rem)"}
     loading="lazy"

@@ -20,6 +20,11 @@ dev:
 sync-docs:
     pnpm sync-docs
 
+# The docs sync with every warning as an error: links to vanished anchors, configured sections or replacements that
+# no longer match their source (the CI runs it)
+sync-docs-strict:
+    node scripts/sync-docs.mjs --strict
+
 # Update the docs sources to the newest commit of their tracked branch (then review, build and commit sources/)
 # Renders public/og.png from the brand background and the template (scripts/og/template.html).
 og-image:
@@ -48,9 +53,9 @@ test:
 e2e *args:
     E2E_PORT={{port}} pnpm exec playwright test -c e2e/playwright.config.ts --project chromium --project mobile-android --workers=2 {{args}}
 
-# The Caddyfile parses (in the official Caddy image)
+# The Caddyfile parses (in the Caddy image of deploy/Dockerfile, by digest)
 caddy-validate:
-    docker run --rm -v "$PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+    docker run --rm -v "$PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine@sha256:d8542f48d34a9cf4e4c11a478865229840e87e4c96ea3f439101f31a5d35f75f caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 
 # The GitHub proxies of the Caddyfile (/gh/issues, /gh/releases/web, /gh/releases/node, /gh/repos/web) and the desktop
 # update feeds (/updates/desktop/…) against a fake GitHub API, in Docker (ports 18089-18091, 18094-18095)
@@ -85,5 +90,6 @@ licenses:
 publish-check:
     scripts/publish-check.sh
 
-# Everything: typecheck, build, unit and dist tests, SPDX, licenses, publication hygiene, Caddyfile, end-to-end
-check: typecheck build test spdx licenses publish-check caddy-validate e2e
+# Everything: the strict docs sync, typecheck, build, unit and dist tests, SPDX, licenses, publication hygiene,
+# Caddyfile, end-to-end
+check: sync-docs-strict typecheck build test spdx licenses publish-check caddy-validate e2e
