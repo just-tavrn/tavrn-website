@@ -26,7 +26,7 @@ RUN pnpm build
 # container with cap_drop ALL and no-new-privileges may not execute a binary with file capabilities; :8080
 # needs none) and keeps it to one layer of ~40 MB. A plain COPY --from would preserve the capability.
 FROM caddy:2-alpine@sha256:d8542f48d34a9cf4e4c11a478865229840e87e4c96ea3f439101f31a5d35f75f AS caddy
-FROM alpine:3.22@sha256:5291449c3df73caf6ed85e649dec1b9e818b39a5d8c871e97afc13e9cd5e8fa8
+FROM alpine:3.24@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6
 LABEL org.opencontainers.image.title="tavrn-website" \
       org.opencontainers.image.description="The tavrn website (tavrn.org): static site served by Caddy" \
       org.opencontainers.image.source="https://github.com/just-tavrn/tavrn-website" \
