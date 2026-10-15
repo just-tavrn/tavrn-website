@@ -110,7 +110,8 @@ The screenshots in `src/assets/screenshots/` come from a reproducible pipeline i
 Playwright script drives the web client against a fresh local demo node with fictitious accounts. `shots/run.sh`
 makes a new set; `node shots/import.mjs <out>` copies it into the site and regenerates
 `src/assets/screenshots/manifest.ts` (scene key, alt text, caption) from the run's `manifest.json`. Pages use the
-scene keys only; Astro makes the WebP variants and widths at build time.
+scene keys only; Astro makes the WebP variants and widths at build time (WebP only, no PNG fallback: every browser in
+scope reads WebP).
 
 ## Downloads and status
 

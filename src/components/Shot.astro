@@ -1,7 +1,8 @@
 ---
 // SPDX-License-Identifier: Apache-2.0
 // A screenshot in a CSS-drawn frame: a window with a title bar and three dots for desktop scenes, a phone
-// outline for "-phone" scenes. No vendor device images. WebP with a PNG fallback in several widths.
+// outline for "-phone" scenes. No vendor device images. WebP only, in several widths: every browser the site
+// supports reads WebP (since 2020), and a PNG fallback in every width made up three quarters of dist/.
 import { Picture } from "astro:assets";
 import { isPhone, screenshot, type SceneKey } from "../assets/screenshots/manifest";
 
@@ -38,7 +39,7 @@ const defaultSizes = phone ? "(min-width: 48rem) 16rem, 60vw" : "(min-width: 72r
       src={shot.image}
       alt={shot.alt}
       formats={["webp"]}
-      fallbackFormat="png"
+      fallbackFormat="webp"
       widths={widths}
       sizes={sizes ?? defaultSizes}
       loading={priority ? "eager" : "lazy"}
