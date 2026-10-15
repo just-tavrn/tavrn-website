@@ -20,6 +20,11 @@ dev:
 sync-docs:
     pnpm sync-docs
 
+# The docs sync with every warning as an error: links to vanished anchors, configured sections or replacements that
+# no longer match their source (the CI runs it)
+sync-docs-strict:
+    node scripts/sync-docs.mjs --strict
+
 # Update the docs sources to the newest commit of their tracked branch (then review, build and commit sources/)
 # Renders public/og.png from the brand background and the template (scripts/og/template.html).
 og-image:
@@ -85,5 +90,6 @@ licenses:
 publish-check:
     scripts/publish-check.sh
 
-# Everything: typecheck, build, unit and dist tests, SPDX, licenses, publication hygiene, Caddyfile, end-to-end
-check: typecheck build test spdx licenses publish-check caddy-validate e2e
+# Everything: the strict docs sync, typecheck, build, unit and dist tests, SPDX, licenses, publication hygiene,
+# Caddyfile, end-to-end
+check: sync-docs-strict typecheck build test spdx licenses publish-check caddy-validate e2e

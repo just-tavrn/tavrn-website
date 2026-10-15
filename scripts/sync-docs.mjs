@@ -8,6 +8,10 @@
  *
  *   node scripts/sync-docs.mjs            sync (fails with a clear message when a source file is missing)
  *   node scripts/sync-docs.mjs --check    exit 1 when a sync would change the generated files
+ *   node scripts/sync-docs.mjs --strict   also exit 1 on a warning: a link to an anchor that no longer exists, a
+ *                                         configured section or replacement that no longer matches its source (the CI
+ *                                         and `just check` use it, so the wiki cannot rot as the sources move; the
+ *                                         dev server and the build stay lenient)
  *
  * Output: src/content/docs/synced/ (wiped and rewritten, gitignored) and src/content/pages/roadmap.md. Files whose
  * content did not change are not touched, so a running dev server only reloads what changed.
@@ -183,8 +187,9 @@ function listFiles(/** @type {string} */ dir) {
     .map((e) => relative(root, join(e.parentPath, e.name)));
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const check = process.argv.includes("--check");
+  const strict = process.argv.includes("--strict");
   let result;
   try {
     result = buildDocs(join(root, "sources"));
@@ -193,7 +198,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     process.exit(1);
   }
   const { files, warnings } = result;
-  for (const w of warnings) console.warn(`sync-docs: warning: ${w}`);
+  for (const w of warnings) console.warn(`sync-docs: ${strict ? "error" : "warning"}: ${w}`);
+  if (strict && warnings.length > 0) {
+    console.error(`sync-docs: ${warnings.length} warning(s) with --strict; fix the configuration in scripts/docs-sources.mjs or the source`);
+    process.exit(1);
+  }
   const stale = listFiles(join(root, OUT_DIR)).filter((f) => !files.has(f));
   const changed = [...files].filter(([path, content]) => {
     const full = join(root, path);

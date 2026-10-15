@@ -39,7 +39,7 @@ just preview      # serves dist/ on http://127.0.0.1:4400
 just check        # everything below, must be green before a commit
 ```
 
-`just check` runs `astro check`, the build, Vitest (unit tests, the checks of `dist/` and its link checker), the SPDX and license
+`just check` runs the strict docs sync, `astro check`, the build, Vitest (unit tests, the checks of `dist/` and its link checker), the SPDX and license
 checks, `scripts/publish-check.sh`, `caddy validate` on `deploy/Caddyfile` and the Playwright suite. The two Docker
 tests of the Caddyfile (`just caddy-test`: the GitHub proxies under `/gh/`, the desktop update feeds and the legal pages' runtime values) run
 separately. Playwright runs only Chromium and the Android phone emulation with two workers:
@@ -78,6 +78,10 @@ repositories where they are versioned with the code, so they always match it.
   `.env.example`, an anchor per variable (`/docs/admins/configuration-reference/#TAVRN_DOMAIN`);
 - fails with a list of the missing files when a configured source is not there.
 
+Links to an anchor that no longer exists (kept without the fragment), configured sections and replacements that no
+longer match their source are warnings for `dev` and `build`, and errors for `node scripts/sync-docs.mjs --strict`
+(`just sync-docs-strict`), which `just check` and the CI run.
+
 **Diagrams.** ```` ```mermaid ```` blocks, synced or hand-written, become diagrams (`src/lib/mermaid.mjs`): the
 page carries the source, and on pages that have a diagram a small loader imports Mermaid (bundled, lazy, no
 requests elsewhere) and draws it in the site's colours (`src/lib/mermaid-render.ts`). Without JavaScript the
@@ -91,7 +95,7 @@ To add a document, add it to `scripts/docs-sources.mjs`; the sidebar groups pick
 
 ```sh
 just update-sources                  # = git submodule update --init --remote --merge sources/
-just sync-docs && just build         # check the result (warnings name anchors or sections that moved)
+just sync-docs-strict && just build  # check the result (an error names an anchor or section that moved)
 git add sources && git commit -m "Update the docs sources"
 ```
 

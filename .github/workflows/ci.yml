@@ -23,9 +23,11 @@ jobs:
     if: ${{ vars.CI_ENABLED == 'true' }}
     uses: just-tavrn/.github/.github/workflows/js-ci.yml@main
     with:
-      # SPDX headers and dependency licenses (the reusable workflow's defaults), astro check, then the build before
-      # the tests, because tests/dist.test.ts checks the built site (JavaScript budget, CSP hashes, no foreign URLs).
-      typecheck: pnpm typecheck
+      # SPDX headers and dependency licenses (the reusable workflow's defaults), the docs sync without any warning
+      # (--strict: no link to a vanished anchor, no configured section or replacement that no longer matches), astro
+      # check, then the build before the tests, because tests/dist.test.ts checks the built site (JavaScript budget,
+      # CSP hashes, no foreign URLs). The build is the run's only one: the e2e job below tests this dist/.
+      typecheck: node scripts/sync-docs.mjs --strict && pnpm typecheck
       test: pnpm build && pnpm test
       build: test -f dist/index.html && test -s csp-script-hashes.txt
       # The docs are synced from the source repositories under sources/ (git submodules, private for now).
