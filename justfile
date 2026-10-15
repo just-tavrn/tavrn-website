@@ -48,9 +48,9 @@ test:
 e2e *args:
     E2E_PORT={{port}} pnpm exec playwright test -c e2e/playwright.config.ts --project chromium --project mobile-android --workers=2 {{args}}
 
-# The Caddyfile parses (in the official Caddy image)
+# The Caddyfile parses (in the Caddy image of deploy/Dockerfile, by digest)
 caddy-validate:
-    docker run --rm -v "$PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+    docker run --rm -v "$PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine@sha256:d8542f48d34a9cf4e4c11a478865229840e87e4c96ea3f439101f31a5d35f75f caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 
 # The GitHub proxies of the Caddyfile (/gh/issues, /gh/releases/web, /gh/releases/node, /gh/repos/web) and the desktop
 # update feeds (/updates/desktop/…) against a fake GitHub API, in Docker (ports 18089-18091, 18094-18095)

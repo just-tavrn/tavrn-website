@@ -6,8 +6,9 @@
 # The two build arguments are the build-time values of the prerendered text (README.md, "Configuration"); everything
 # else (node URL, app URL, Uptime Kuma, delegation, the imprint and contact details) comes from the environment of
 # the container, so the image itself is generic and holds no personal data.
+# Every base image is pinned by digest (Dependabot keeps tag and digest current); the tag says which release it is.
 
-FROM node:24-alpine AS build
+FROM node:24-alpine@sha256:44fce696f38ba8c987c4db89954051000bbd05ffd8d8659ba15ed4a8602e937f AS build
 WORKDIR /app
 RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
@@ -24,8 +25,8 @@ RUN pnpm build
 # which drops the file capability cap_net_bind_service the caddy image's binary carries (an unprivileged
 # container with cap_drop ALL and no-new-privileges may not execute a binary with file capabilities; :8080
 # needs none) and keeps it to one layer of ~40 MB. A plain COPY --from would preserve the capability.
-FROM caddy:2-alpine AS caddy
-FROM alpine:3.22
+FROM caddy:2-alpine@sha256:d8542f48d34a9cf4e4c11a478865229840e87e4c96ea3f439101f31a5d35f75f AS caddy
+FROM alpine:3.22@sha256:5291449c3df73caf6ed85e649dec1b9e818b39a5d8c871e97afc13e9cd5e8fa8
 LABEL org.opencontainers.image.title="tavrn-website" \
       org.opencontainers.image.description="The tavrn website (tavrn.org): static site served by Caddy" \
       org.opencontainers.image.source="https://github.com/just-tavrn/tavrn-website" \

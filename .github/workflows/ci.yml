@@ -74,7 +74,8 @@ jobs:
         with:
           persist-credentials: false
       - name: caddy validate
-        run: docker run --rm -v "$PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+        # The Caddy image of deploy/Dockerfile, by digest (Dependabot bumps the Dockerfile; keep the two equal).
+        run: docker run --rm -v "$PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine@sha256:d8542f48d34a9cf4e4c11a478865229840e87e4c96ea3f439101f31a5d35f75f caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 
   publish-check:
     name: Publication hygiene
