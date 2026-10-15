@@ -31,7 +31,13 @@ still finds files of encrypted channels through the search index on your device.
 to change it, create a new files channel and upload the files again.
 
 Files channels without encryption show a permanent banner saying that their files are not end-to-end encrypted.
-A room can also keep such a channel on an external storage of its own.
+
+## Your own storage
+
+If the node allows it, a room can keep a files channel on a storage of its own: a WebDAV share (a Nextcloud, for
+example) or an S3-compatible bucket. Members who manage the room's channels and files choose the store in the
+channel's settings, before the first upload. An encrypted channel stays encrypted there: the store only ever
+sees ciphertext, never file names or contents.
 
 ## Your own uploads
 
