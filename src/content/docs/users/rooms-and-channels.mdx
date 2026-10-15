@@ -10,7 +10,14 @@ import Screenshot from "../../../components/docs/Screenshot.astro";
 A **room** is a community: a gaming group, a club, a team. It lives on one node and has members, roles and
 channels, grouped into **categories**. Your rooms are listed in the narrow bar on the far left, the room rail;
 rooms of other nodes appear there under their domain. You can group rooms into folders: right-click the empty rail
-and choose **New folder…**, or drop one room onto another.
+and choose **New folder…**, or drop one room onto another. A click on a folder opens and closes it; a closed folder
+shows small icons of its rooms and adds up their unread messages.
+
+A green speaker on a room's icon means somebody is in one of its voice channels; while somebody shares a screen it
+turns into a monitor. Rest the pointer on a room (or press and hold it on a phone) to see its card: the members, the
+description, what is new and who is in which voice channel.
+
+<Screenshot scene="rail-folders-desktop" />
 
 ## Kinds of channels
 
@@ -26,6 +33,13 @@ A small lock next to each channel shows its encryption. A closed lock means end-
 default and always the case for voice channels. An open lock in a warning colour means the channel is not
 end-to-end encrypted, and the channel says so in a banner. Some rooms and channels are marked **18+** and are only
 open to adults.
+
+Two more marks tell who may use a channel. A group with a slash marks a **private** channel: only some roles may see
+it (or, on a voice channel, join it). A no-entry sign means the channel is **restricted for you**: you can see it but
+not join it, or only read in it; its name is dimmed, and the channel explains the rest when you open it. Room owners
+can check what each role sees with [View room as this role](/docs/users/moderation/#viewing-the-room-as-a-role).
+
+<Screenshot scene="view-as-role-desktop" />
 
 ## Joining a room
 

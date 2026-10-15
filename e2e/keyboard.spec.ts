@@ -52,11 +52,11 @@ test("the tour's tabs follow the arrow keys, Home and End", async ({ page }) => 
   await expect(page.locator("#panel-voice")).toBeVisible();
   await expect(page.locator("#panel-chat")).toBeHidden();
   await page.keyboard.press("End");
-  await expect(tab("Search")).toHaveAttribute("aria-selected", "true");
+  await expect(tab("Bots")).toHaveAttribute("aria-selected", "true");
   await page.keyboard.press("ArrowRight");
   await expect(tab("Chat")).toHaveAttribute("aria-selected", "true");
   await page.keyboard.press("ArrowLeft");
-  await expect(tab("Search")).toBeFocused();
+  await expect(tab("Bots")).toBeFocused();
   await page.keyboard.press("Home");
   await expect(tab("Chat")).toBeFocused();
   // Only the selected tab is in the Tab order.

@@ -9,10 +9,13 @@
 import type { ImageMetadata } from "astro";
 import adminDesktop from "./admin-desktop.png";
 import adminFederationDesktop from "./admin-federation-desktop.png";
+import adminReportsDesktop from "./admin-reports-desktop.png";
 import botsDesktop from "./bots-desktop.png";
 import channelCreateDesktop from "./channel-create-desktop.png";
 import chatDesktop from "./chat-desktop.png";
 import chatPhone from "./chat-phone.png";
+import componentsDesktop from "./components-desktop.png";
+import componentsModalDesktop from "./components-modal-desktop.png";
 import composerCommandsDesktop from "./composer-commands-desktop.png";
 import composerHelpDesktop from "./composer-help-desktop.png";
 import consentDesktop from "./consent-desktop.png";
@@ -31,6 +34,10 @@ import menuNotificationsDesktop from "./menu-notifications-desktop.png";
 import moderationDesktop from "./moderation-desktop.png";
 import onboardingDesktop from "./onboarding-desktop.png";
 import onboardingRecoveryKeyDesktop from "./onboarding-recovery-key-desktop.png";
+import pollDateDesktop from "./poll-date-desktop.png";
+import pollDesktop from "./poll-desktop.png";
+import pollPhone from "./poll-phone.png";
+import railFoldersDesktop from "./rail-folders-desktop.png";
 import registerDesktop from "./register-desktop.png";
 import rolesDesktop from "./roles-desktop.png";
 import roomApplicationsDesktop from "./room-applications-desktop.png";
@@ -44,8 +51,10 @@ import settingsNotificationsDesktop from "./settings-notifications-desktop.png";
 import settingsPrivacyDesktop from "./settings-privacy-desktop.png";
 import settingsSecurityDesktop from "./settings-security-desktop.png";
 import threadsDesktop from "./threads-desktop.png";
+import viewAsRoleDesktop from "./view-as-role-desktop.png";
 import voiceDesktop from "./voice-desktop.png";
 import voicePhone from "./voice-phone.png";
+import voiceStatusDesktop from "./voice-status-desktop.png";
 import whiteboardDesktop from "./whiteboard-desktop.png";
 
 export interface Screenshot {
@@ -91,6 +100,18 @@ export const screenshots = {
     image: onboardingRecoveryKeyDesktop,
     alt: "Step 4 of 4 of the registration: the recovery key as 24 numbered words and a compact form, with buttons to copy or download it.",
     caption: "The recovery key unlocks the encrypted messages on new devices; only the account owner has it.",
+    use: ["docs"],
+  },
+  "poll-desktop": {
+    image: pollDesktop,
+    alt: "A poll in the encrypted channel raid-strategy: Which boss do we learn first in Season 4?, with four options, result bars, counts and shares, the names of the voters, Mira's own vote marked as Your vote, Change vote and the remaining time until it closes.",
+    caption: "Polls in a channel: results after voting, with your own vote marked; in encrypted channels the votes are encrypted too.",
+    use: ["landing", "docs"],
+  },
+  "poll-phone": {
+    image: pollPhone,
+    alt: "The same poll on a phone: the question, the four options with their bars and voters, and Mira's vote marked.",
+    caption: "The poll on a phone.",
     use: ["docs"],
   },
   "threads-desktop": {
@@ -149,7 +170,7 @@ export const screenshots = {
   },
   "voice-desktop": {
     image: voiceDesktop,
-    alt: "The voice channel Raid Night with four participants: Theo's shared screen showing a party facing a crystal golem, Mira's camera tile, and the illustrated avatars of Jonas and Lena on their tiles, with End-to-end encrypted in the header and the call controls at the bottom.",
+    alt: "The voice channel Raid Night with four participants: Theo's shared screen showing a party facing a crystal golem, Mira's camera tile, and the illustrated avatars of Jonas and Lena on their tiles; the header shows the channel status Sunken Citadel prog, pull at 21:15, the session timer and End-to-end encrypted, the call controls are at the bottom.",
     caption: "Voice, video and screen sharing, end-to-end encrypted with keys from the channel's MLS group.",
     use: ["landing", "docs"],
   },
@@ -158,6 +179,12 @@ export const screenshots = {
     alt: "The voice stage on a phone with the shared boss fight, Mira's camera tile, the avatar tiles of Jonas and Lena and the call controls.",
     caption: "The voice stage on a phone.",
     use: ["landing", "docs"],
+  },
+  "voice-status-desktop": {
+    image: voiceStatusDesktop,
+    alt: "The voice channel Raid Night during a session: the header with the channel's status line Sunken Citadel prog, pull at 21:15 and the running session timer, and the quick menu of the microphone button with the microphones, push-to-talk, the input volume and the voice settings.",
+    caption: "Voice channels carry a status line and a session timer; a right-click on the microphone or headphones button switches devices and volumes during the call.",
+    use: ["docs"],
   },
   "whiteboard-desktop": {
     image: whiteboardDesktop,
@@ -169,6 +196,12 @@ export const screenshots = {
     image: rolesDesktop,
     alt: "The role editor in the room settings with the Moderator role selected: name, colour, show separately and the permission switches.",
     caption: "Roles and permissions: hierarchy, colour, show separately in the member list, and fine-grained permission switches.",
+    use: ["docs"],
+  },
+  "view-as-role-desktop": {
+    image: viewAsRoleDesktop,
+    alt: "The room Night Owls Gaming previewed as the role Night Owl: a banner Viewing as Night Owl with Exit preview above the channel general, the private channel officers missing from the channel list and the files channel shared-files marked read only for the role, the conversation and the composer as a member with that role sees them.",
+    caption: "View the room as a role: room settings show what a member with only that role sees and may do, read-only on your device.",
     use: ["docs"],
   },
   "files-desktop": {
@@ -231,6 +264,24 @@ export const screenshots = {
     caption: "Installed applications per room, with their permissions and commands.",
     use: ["docs"],
   },
+  "poll-date-desktop": {
+    image: pollDateDesktop,
+    alt: "A date poll in the channel raid-signups, Season 4 launch raid: which evening works for you?, showing the results as a compact grid with three evenings as columns and three start times as rows, yes and maybe counts per slot, a star on the best slot, which is summarised above the grid, and Mira's own answers as badges.",
+    caption: "Date polls find the evening that suits most: the results are a compact grid of days and times, shown in your own time zone.",
+    use: ["docs"],
+  },
+  "components-desktop": {
+    image: componentsDesktop,
+    alt: "A message of the bot Raid Planner in the channel raid-signups: a sign-up card with an embed of tanks, healers and damage, the buttons Sign up, Bench me, Leave a note and the link button Raid guide, and the select menu Choose your role open with Tank, Healer and Damage and their descriptions; under the card the bot's answer You are on the list for Friday, marked Only you can see this.",
+    caption: "Bots can add buttons, select menus and forms to their messages, drawn with the app's own controls; an answer can be visible to you alone.",
+    use: ["landing", "docs"],
+  },
+  "components-modal-desktop": {
+    image: componentsModalDesktop,
+    alt: "The form A note for the raid lead that the Raid Planner bot opened after a click on Leave a note: the bot's name with the BOT badge, a one-line field When can you be there? with 20:45 and a note field with a character counter, and the buttons Cancel and Send.",
+    caption: "A bot's form opens as a dialog of the app; required fields and lengths are checked before anything is sent.",
+    use: ["docs"],
+  },
   "room-automod-desktop": {
     image: roomAutomodDesktop,
     alt: "The Auto-moderation tab of the room settings with three rules: blocked scam phrases, a block list of link domains and a timeout for insults.",
@@ -263,8 +314,8 @@ export const screenshots = {
   },
   "friends-desktop": {
     image: friendsDesktop,
-    alt: "The friends page with three friends, Lena Park marked with a verified badge, and an incoming friend request from Kai Brennan with a short message.",
-    caption: "Friends, friend requests and verified contacts: verification compares safety numbers in person or by QR code.",
+    alt: "The friends page with three friends, Lena Park marked with a verified badge, Theo Laurent shown in voice in the Lounge of Night Owls Gaming, and an incoming friend request from Kai Brennan with a short message.",
+    caption: "Friends, friend requests and verified contacts: verification compares safety numbers in person or by QR code, and a friend in voice shows where.",
     use: ["docs"],
   },
   "dm-desktop": {
@@ -279,6 +330,12 @@ export const screenshots = {
     caption: "Discover public rooms on this node and on the nodes it knows.",
     use: ["landing", "docs"],
   },
+  "rail-folders-desktop": {
+    image: railFoldersDesktop,
+    alt: "The room rail on the left with Night Owls Gaming and the expanded violet folder Hangouts holding Late Night Music, Indie Dev Lounge and Study Group; Late Night Music carries a green voice badge, and its room card shows the member count, the description and the avatars of Theo and Kai in its voice channel.",
+    caption: "Group rooms into folders in the rail; badges and the room card show who is in voice without opening the room.",
+    use: ["docs"],
+  },
   "settings-legal-desktop": {
     image: settingsLegalDesktop,
     alt: "The Legal and privacy settings with the node's published documents, the privacy policy and the imprint, and the section for notices about your own content.",
@@ -290,6 +347,12 @@ export const screenshots = {
     alt: "The node administration overview with counters for users, rooms, messages and storage, and the effective configuration of the node.",
     caption: "Node administration: an overview with counters and the effective configuration.",
     use: ["landing", "docs"],
+  },
+  "admin-reports-desktop": {
+    image: adminReportsDesktop,
+    alt: "The Reports tab of the node administration: every report of the node, filtered by status and by who handles it, with the spam report about a message of Kai Brennan in Night Owls Gaming opened: the reporter, the note, the message text the reporter released and the moderation actions.",
+    caption: "Node admins see every report of the node; reports about accounts of other nodes can be forwarded to their home node.",
+    use: ["docs"],
   },
   "admin-federation-desktop": {
     image: adminFederationDesktop,

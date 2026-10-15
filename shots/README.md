@@ -7,7 +7,10 @@ Discover page. Everything shown is created by the script; the node's domain is `
 reserved `.example` domain. The pictures (avatars, room icons, the arena map, Mira's camera, Theo's shared screen and the
 whiteboard's background) are illustrations in [`assets/`](assets/README.md): the avatars and icons are uploaded through
 the API, the camera is a Y4M video made from `cam-mira.png` with `ffmpeg` and played by Chromium's fake capture device,
-and the shared screen is a canvas in the page that shows `screen-share.png`.
+and the shared screen is a canvas in the page that shows `screen-share.png`. Chromium's fake microphones and speakers
+are listed under ordinary device names in the voice quick menus. The bot of the `components` scenes is
+[`raid-planner-bot.ts`](raid-planner-bot.ts), started by `make.ts` with the installed `@tavrn/bot` of the tavrn-web
+checkout.
 
 [`manifest.json`](manifest.json) lists every image with its scene, viewport, pixel size, alt text, caption and where it
 is meant to be used (`landing`, `docs`). The alt texts and captions live next to each capture in `make.ts`; `run.sh`
@@ -39,7 +42,8 @@ Chromium's test pattern). It
 
 2. starts the web client's dev server on port 5700 against it, unless one is already running there
    (`E2E_NODE_PORT=8700 E2E_WEB_PORT=5700 pnpm --filter @tavrn/web dev` in tavrn-web),
-3. copies `make.ts` and `playwright.config.ts` into `e2e/shots/` of tavrn-web and runs, from `e2e/`,
+3. copies `make.ts`, `playwright.config.ts` and `raid-planner-bot.ts` into `e2e/shots/` of tavrn-web and runs, from
+   `e2e/`,
    `SHOTS_OUT=<out> SHOTS_ASSETS=<this folder>/assets npx playwright test -c shots/playwright.config.ts --project chromium --workers=1`,
 4. optimizes the PNGs losslessly (`oxipng`, or the Python binding `pip install pyoxipng`), and
 5. stops the node and the dev server it started (by PID), removes `e2e/shots/` and the temporary data directory.
@@ -47,16 +51,17 @@ Chromium's test pattern). It
 Ports and addresses can be changed with `SHOTS_NODE_PORT`, `SHOTS_WEB_PORT`, `SHOTS_LIVEKIT_PORT`, `SHOTS_RTC_TCP_PORT`,
 `SHOTS_RTC_UDP_RANGE` and `SHOTS_MEDIA_IP`. `SHOTS_ONLY=chat,voice` captures only some scenes (the setup always runs
 fully); `SHOTS_DEBUG=1` saves a picture of every open page under `out/debug/` when a scene fails. A run takes about
-five to six minutes.
+four to six minutes.
 
 The current images were made with (the venv only provides `pyoxipng`):
 
 ```sh
 PATH=<venv>/bin:$PATH SHOTS_DATA=<work>/node \
-TAVRN_NODE_BIN=<tavrn-node release build> TAVRN_WEB=<tavrn-web checkout> ./run.sh <work>/out
+TAVRN_NODE_BIN=<tavrn-node build> TAVRN_WEB=<tavrn-web checkout> ./run.sh <work>/out
 ```
 
-against `tavrn-node 0.2.0` (release build of 2026-10-10 06:43, local wave 4) and tavrn-web `5a2f917`.
+against `tavrn-node 0.4.0-rc.8` (a debug build of tavrn-node `7a93d2a`, 2026-10-15) and tavrn-web `d875382`, with the
+`pnpm install` of that commit (its `@tavrn/bot` brings the message components).
 
 Every scene is its own step: a failing scene is logged (`step <name>: FAILED …`) and skipped, the other scenes still
 run, and the test fails at the end with the list of failed steps.
@@ -69,6 +74,10 @@ All images are 2× (retina): desktop 1440×900 → 2880×1800 px, phone 390×844
 |---|---|---|---|
 | `chat` | desktop, phone | the encrypted channel #general: Markdown, the arena map with a thread, a code block, a spoiler, a reply, reactions, a pinned message, the member list by roles, all with avatars | landing, docs |
 | `voice` | desktop, phone | the voice channel Raid Night: Theo's screen share, Mira's camera, avatar tiles, "End-to-end encrypted" | landing, docs |
+| `poll` | desktop, phone | a poll in the encrypted channel #raid-strategy after voting: result bars, voters, the own vote marked, Change vote | landing, docs |
+| `poll-date` | desktop | a date poll in #raid-signups with the compact results grid (days × times) and the best slot | docs |
+| `components` | desktop | a message of the Raid Planner bot with an embed, buttons, a link button and the select menu open, and an answer only Mira sees | landing, docs |
+| `components-modal` | desktop | the form the bot opens after "Leave a note" | docs |
 | `threads` | desktop | the forum channel #guides with tagged posts and a post open as a thread | landing, docs |
 | `files` | desktop | the files channel with folders and files | landing, docs |
 | `search` | desktop | the search panel with results from encrypted channels and the status line | landing, docs |
@@ -82,6 +91,9 @@ All images are 2× (retina): desktop 1440×900 → 2880×1800 px, phone 390×844
 | `room-automod` | desktop | room settings → Auto-moderation with three rules | docs |
 | `roles` | desktop | room settings → Roles with the Moderator role | docs |
 | `invites` | desktop | room settings → Invites | docs |
+| `voice-status` | desktop | the voice header with the channel status and the session timer, and the microphone's quick menu | docs |
+| `rail-folders` | desktop | the room rail with the folder Hangouts expanded, a voice badge and the room card of Late Night Music | docs |
+| `view-as-role` | desktop | the room previewed as the role Night Owl: the banner, the private channel hidden, the access marks | docs |
 | `whiteboard` | desktop | the whiteboard of #raid-strategy: a route sketch as background image with notes drawn on top | landing, docs |
 | `security` | desktop | settings → Security: second factor, passkey, recovery codes | docs |
 | `settings-security` | desktop | settings → Security, lower half: recovery key, identity key | landing, docs |
@@ -91,6 +103,7 @@ All images are 2× (retina): desktop 1440×900 → 2880×1800 px, phone 390×844
 | `settings-notifications` | desktop | settings → Notifications | docs |
 | `settings-legal` | desktop | settings → Legal & privacy with a published privacy policy and imprint | docs |
 | `admin` | desktop | node administration overview | landing, docs |
+| `admin-reports` | desktop | node administration → Reports with the spam report opened | docs |
 | `admin-federation` | desktop | node administration → Federation (no other node known) | docs |
 | `login` | desktop, phone | the sign-in card | landing, docs |
 | `login-remote` | desktop | "Account of another node" on the sign-in page | docs |

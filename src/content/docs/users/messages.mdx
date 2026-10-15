@@ -1,6 +1,6 @@
 ---
 title: Messages
-description: Formatting, replies, reactions, emojis, mentions, polls, pins, threads, spoilers, attachments and slash commands.
+description: Formatting, replies, reactions, emojis, mentions, polls, buttons and forms of bots, pins, threads, spoilers, attachments and slash commands.
 sidebar:
   order: 4
 ---
@@ -56,9 +56,34 @@ bars with the number of votes, and a date poll puts the best dates on top, with 
 grid. The author, or a moderator with *Manage messages*, can **Close poll now**. A poll cannot be edited after it is
 sent.
 
+<Screenshot scene="poll-desktop" />
+
+Once you voted, the poll shows its results with your own vote marked, and **Change vote** opens your answers again.
+The results of a date poll stay small with many dates: a grid with the days as columns and the times as rows, a
+star on the best dates. Choose a date in the grid to see who answered what.
+
+<Screenshot scene="poll-date-desktop" />
+
+<Screenshot scene="poll-phone" />
+
 In an encrypted conversation the question, the options and every vote are end-to-end encrypted; the node only sees
 that somebody voted and when the poll closes. "Hidden" results and votes are a promise of the apps, not anonymity:
 every member's app can read all votes, and the poll composer says so.
+
+## Buttons, menus and forms from bots
+
+Bots can put **buttons** and **select menus** under their messages, and answer a click with a small **form**. The
+app draws them with its own controls, so they look and work like the rest of tavrn on every screen; the bot only
+chooses the words, an emoji and one of a few styles. What a bot answers can be a new message, a changed message, a
+short notice under the message that **only you can see**, or a form, which opens as a dialog with the bot's name.
+
+<Screenshot scene="components-desktop" />
+
+A link button always shows you the full address before it opens anything. In an encrypted channel, what you choose
+or type into a form is encrypted for the channel's members like a message. Room owners decide who may use these
+controls with the permission *Use buttons and menus of apps*.
+
+<Screenshot scene="components-modal-desktop" />
 
 ## Pins and threads
 

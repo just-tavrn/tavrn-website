@@ -35,6 +35,8 @@ on every page of the room. The preview runs only on your device and changes noth
 every other change are switched off while it lasts. In encrypted channels the history a new member with that role
 would not get is cut off at "History for this role starts here".
 
+<Screenshot scene="view-as-role-desktop" />
+
 ## Keeping order
 
 Open a member's menu to remove (kick), ban or time out someone, mute them in voice, or move them to another voice
@@ -54,6 +56,14 @@ Nobody but the members can read an encrypted message. The person who reports it 
 moderators see it marked as "released by the reporter – not verified".
 
 <Screenshot scene="moderation-desktop" />
+
+Node admins see every report of their node under **Administration → Reports**. When a report is about someone with
+an account on another node, only that node's admins can act on the account, so the admin can **forward** the report
+to the person's home node. Before anything is sent, a confirmation says what leaves the node: the category, the
+reporter's text and the reported message. The reporter's address does not; the other node only sees a pseudonym.
+Reports that other nodes forwarded are marked with the node they came from.
+
+<Screenshot scene="admin-reports-desktop" />
 
 ## Auto-moderation
 
