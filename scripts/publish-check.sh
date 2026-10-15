@@ -15,6 +15,12 @@
 #   - the owner's private pattern list in a sibling checkout of the internal repository
 #     (../tavrn-internal/publish-check.private), when it exists,
 #   - the default node host in deploy/.env.example (TAVRN_NODE_URL) and its parent domain.
+# Without any of them the check fails, unless PUBLISH_CHECK_ALLOW_UNCONFIGURED=1: then only the private-pattern
+# step is skipped, with a warning, and every other step still runs and still fails. The CI sets it for Dependabot's
+# pull requests alone (they see only Dependabot secrets); the push to main runs the full check with the patterns.
+# A finding names the file and the line, never the matching text (CI logs of public repositories are public).
+# The source of this script is scripts/publish-check.sh of the tavrn repository; this copy adds the default node
+# host and the sibling list above. Change the source first, then the copies.
 set -uo pipefail
 
 here="$(cd "$(dirname "$0")/.." && pwd)"
@@ -75,11 +81,13 @@ for example in deploy/.env.example "$here/deploy/.env.example"; do
   break
 done
 [ "${#patterns[@]}" -gt 0 ] && mapfile -t patterns < <(printf '%s\n' "${patterns[@]}" | sort -u)
-if [ "${#patterns[@]}" -eq 0 ]; then
+if [ "${#patterns[@]}" -eq 0 ] && [ "${PUBLISH_CHECK_ALLOW_UNCONFIGURED:-}" = "1" ]; then
+  echo "publish-check: warning: private-pattern check skipped: no patterns configured and PUBLISH_CHECK_ALLOW_UNCONFIGURED=1 (the push to main runs it with the patterns)" >&2
+elif [ "${#patterns[@]}" -eq 0 ]; then
   report "no private domains or addresses configured (PUBLISH_CHECK_PRIVATE or .publish-check.private)"
 else
   for f in "${files[@]}"; do
-    case "$f" in */node_modules/* | *.lock | pnpm-lock.yaml) continue ;; esac
+    case "$f" in */node_modules/* | *.lock | pnpm-lock.yaml | package-lock.json) continue ;; esac
     [ -f "$f" ] || continue
     case "$f" in
       deploy/docker-compose.yml | deploy/.env.example | deploy/Caddyfile | deploy/entrypoint.sh | README.md | deploy/README.md)
@@ -88,11 +96,12 @@ else
     esac
     for p in "${patterns[@]}"; do
       if [ -n "$allow" ]; then
-        hit=$(awk -v a="$allow" -v p="$p" '{ gsub(a, ""); if (index($0, p)) { print NR ": " $0; exit } }' "$f")
+        hit=$(awk -v a="$allow" -v p="$p" '{ gsub(a, ""); if (index($0, p)) { print NR; exit } }' "$f")
       else
         hit=$(grep -nIF -- "$p" "$f" | head -n 1)
       fi
-      [ -n "$hit" ] && report "private domain/address in $f: $(cut -c1-120 <<< "$hit")"
+      # File and line only: the CI log of a public repository must not repeat the private string.
+      [ -n "$hit" ] && report "private domain/address in $f:${hit%%:*}"
     done
   done
 fi
@@ -104,11 +113,11 @@ for f in "${files[@]}"; do
   [ -f "$f" ] || continue
   # Documented example credentials (AWS's AKIAIOSFODNN7EXAMPLE and the like) are fine.
   hit=$(grep -nIE -- "$secret_re" "$f" | grep -v 'EXAMPLE' | head -n 1)
-  [ -n "$hit" ] && report "possible secret in $f: $(cut -c1-80 <<< "$hit")"
+  [ -n "$hit" ] && report "possible secret in $f:${hit%%:*}"
 done
 
-# 4. gitleaks, if installed: only what would be published (the files above, not ignored build or test output such as
-#    build output or local data), plus the git history.
+# 4. gitleaks, if installed: only what would be published (the files above, not ignored build or test output or
+#    local data), plus the git history.
 if command -v gitleaks >/dev/null 2>&1; then
   tree="$(mktemp -d)"
   trap 'rm -rf "$tree"' EXIT
