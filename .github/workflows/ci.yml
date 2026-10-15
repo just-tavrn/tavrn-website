@@ -68,6 +68,10 @@ jobs:
           name: website-dist
           path: dist
       - run: test -f dist/index.html
+      # csp-script-hashes.txt lives next to dist/, not in the artifact: the specs' production CSP (e2e/helpers.ts)
+      # reads it. Recomputed from the downloaded dist/ (deterministic: the same hashes the js job wrote).
+      - name: CSP hashes of this dist/
+        run: node scripts/csp-hashes.mjs && test -s csp-script-hashes.txt
       - run: pnpm exec playwright test -c e2e/playwright.config.ts --project chromium --project mobile-android --workers=2
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: ${{ failure() }}
