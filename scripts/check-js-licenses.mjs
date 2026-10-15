@@ -1,62 +1,136 @@
 // SPDX-License-Identifier: Apache-2.0
-// Checks the licenses of the production dependencies of the website (`pnpm licenses list --prod`) against the
-// allow-list. Only a small part ends up in the built site (Astro's and Starlight's client code, Preact for the
-// status island, Pagefind, the Inter font and Lucide's icon paths), but the whole build stays on permissive licenses.
-// (A)GPL/LGPL is refused; an unknown license fails until it is verified by hand and recorded in VERIFIED below.
+// Shared script of the tavrn repositories, version 1. The source is scripts/check-js-licenses.mjs of just-tavrn/.github;
+// every repository with JavaScript packages carries an identical copy (apart from the SPDX line above), and what differs
+// per repository lives in scripts/js-licenses.config.mjs next to it. Change the source first, then run its
+// scripts/sync-shared.sh (docs/GITHUB.md "Shared scripts"); the CI job "Shared scripts in sync" fails while a copy differs.
+//
+// Checks the licenses of the production dependencies (`pnpm licenses list --prod`, per package of the configuration)
+// against the allow-list: the permissive licenses below plus the configuration's `allowed`. (A)GPL/LGPL is never on it.
+// An SPDX expression passes when it is satisfiable with allowed licenses: OR needs one side, AND both, parentheses
+// group, `X WITH Y` must be allowed as a whole; anything that does not parse fails. A package without license metadata
+// ("Unknown") fails until it is verified by hand and recorded in the configuration's `verified`; `exceptions` allows a
+// single package with one named license outside the list (with the reason in a comment there).
 // Usage: node scripts/check-js-licenses.mjs [--table]   (--table prints every direct dependency)
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
-const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const ALLOWED = new Set([
-  "MIT", "MIT-0", "0BSD", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "ISC", "MPL-2.0", "Zlib", "CC0-1.0",
-  "Unlicense", "BlueOak-1.0.0", "Python-2.0",
-  // The Inter typeface (@fontsource-variable/inter), bundled into the site as woff2 files (LICENSE.md, NOTICE).
-  "OFL-1.1",
-]);
-// Packages whose metadata carries no SPDX license, verified against their license file.
-const VERIFIED = {
-  // Mermaid's colour library: MIT, as its license file says.
-  khroma: "MIT",
-};
-// Single packages allowed with a license outside the list, with the reason. Nothing of them reaches the site.
-const EXCEPTIONS = {
-  // Browser usage data (attribution licence) read by browserslist inside Babel, which @astrojs/preact's Vite preset
-  // runs at build time only.
-  "caniuse-lite": "CC-BY-4.0",
-  // Mermaid's ELK layout engine: astro.config.mjs replaces the chunk that imports it by a stub (the docs draw with
-  // dagre), so it is installed but never bundled.
-  elkjs: "EPL-2.0",
-};
+/** Permissive licenses without copyleft (MPL-2.0: file-level copyleft only, used by @tavrn/crypto and @tavrn/e2ee). */
+export const COMMON_ALLOWED = [
+  "MIT", "MIT-0", "0BSD", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "ISC", "MPL-2.0", "Zlib", "CC0-1.0", "Unlicense",
+];
 
-/** True when the SPDX expression is satisfiable with allowed licenses (OR: one side, AND: both sides). */
-function allowed(expr) {
-  const clean = expr.replace(/[()]/g, " ").trim();
-  return clean.split(/\s+OR\s+/).some((alt) => alt.split(/\s+AND\s+/).every((l) => ALLOWED.has(l.trim())));
+/** Splits an SPDX expression into parentheses and words. */
+function tokenize(expr) {
+  return expr.replace(/[()]/g, " $& ").trim().split(/\s+/).filter(Boolean);
 }
 
-const manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
-const out = execFileSync("pnpm", ["licenses", "list", "--prod", "--json"], { cwd: root, encoding: "utf8" });
-const byLicense = JSON.parse(out || "{}");
-const direct = new Set(Object.keys(manifest.dependencies ?? {}));
-const table = process.argv.includes("--table");
-let failures = 0;
-let count = 0;
-for (const [license, entries] of Object.entries(byLicense)) {
-  for (const e of entries) {
-    count++;
-    const effective = license === "Unknown" ? (VERIFIED[e.name] ?? "Unknown") : license;
-    if (!allowed(effective) && EXCEPTIONS[e.name] !== effective) {
-      failures++;
-      console.error(`${e.name}@${e.versions.join(",")} has license '${license}', not allowed`);
+/**
+ * Parses an SPDX license expression (`MIT`, `(MIT OR Apache-2.0)`, `GPL-3.0-only AND (MIT OR Apache-2.0)`,
+ * `Apache-2.0 WITH LLVM-exception`) into a tree of { or: [...] }, { and: [...] } and { id } nodes. AND binds tighter
+ * than OR; the operators are accepted in upper or lower case. Throws on anything else.
+ */
+export function parseExpression(expr) {
+  const tokens = tokenize(String(expr));
+  let pos = 0;
+  const peek = () => tokens[pos];
+  const op = (t) => (t === undefined ? undefined : t.toUpperCase());
+  const isOperator = (t) => ["AND", "OR", "WITH"].includes(op(t));
+  const atom = () => {
+    const t = tokens[pos++];
+    if (t === undefined) throw new Error(`unexpected end of '${expr}'`);
+    if (t === "(") {
+      const inner = orExpr();
+      if (tokens[pos++] !== ")") throw new Error(`missing ')' in '${expr}'`);
+      return inner;
     }
-    if (table && direct.has(e.name)) console.log(`| ${e.name} | ${e.versions.join(", ")} | ${effective} |`);
+    if (t === ")" || isOperator(t)) throw new Error(`unexpected '${t}' in '${expr}'`);
+    if (op(peek()) === "WITH") {
+      pos++;
+      const exception = tokens[pos++];
+      if (exception === undefined || exception === "(" || exception === ")" || isOperator(exception)) {
+        throw new Error(`missing exception after WITH in '${expr}'`);
+      }
+      return { id: `${t} WITH ${exception}` };
+    }
+    return { id: t };
+  };
+  const andExpr = () => {
+    const parts = [atom()];
+    while (op(peek()) === "AND") {
+      pos++;
+      parts.push(atom());
+    }
+    return parts.length === 1 ? parts[0] : { and: parts };
+  };
+  const orExpr = () => {
+    const parts = [andExpr()];
+    while (op(peek()) === "OR") {
+      pos++;
+      parts.push(andExpr());
+    }
+    return parts.length === 1 ? parts[0] : { or: parts };
+  };
+  const tree = orExpr();
+  if (pos !== tokens.length) throw new Error(`unexpected '${tokens[pos]}' in '${expr}'`);
+  return tree;
+}
+
+/** True when the SPDX expression is satisfiable with licenses of `allowedSet`; false when it does not parse. */
+export function satisfies(expr, allowedSet) {
+  let tree;
+  try {
+    tree = parseExpression(expr);
+  } catch {
+    return false;
   }
+  const ok = (node) => {
+    if (node.or) return node.or.some(ok);
+    if (node.and) return node.and.every(ok);
+    return allowedSet.has(node.id);
+  };
+  return ok(tree);
 }
-if (failures > 0) {
-  console.error(`JS license check failed: ${failures} dependencies with licenses outside the allow-list`);
-  process.exit(1);
+
+/** Runs the check for the repository at `root` with its configuration; returns the number of failures. */
+export function check(root, config, { table = false, log = console.log, error = console.error } = {}) {
+  const allowedSet = new Set([...COMMON_ALLOWED, ...(config.allowed ?? [])]);
+  const verified = config.verified ?? {};
+  const exceptions = config.exceptions ?? {};
+  let failures = 0;
+  for (const pkg of config.packages ?? ["."]) {
+    const dir = join(root, pkg);
+    const manifest = JSON.parse(readFileSync(join(dir, "package.json"), "utf8"));
+    const out = execFileSync("pnpm", ["licenses", "list", "--prod", "--json"], { cwd: dir, encoding: "utf8" });
+    const byLicense = JSON.parse(out || "{}");
+    const direct = new Set(Object.keys(manifest.dependencies ?? {}));
+    const label = `${pkg === "." ? manifest.name : pkg} (${manifest.license})`;
+    let count = 0;
+    for (const [license, entries] of Object.entries(byLicense)) {
+      for (const e of entries) {
+        count++;
+        const effective = license === "Unknown" ? (verified[e.name] ?? "Unknown") : license;
+        if (!satisfies(effective, allowedSet) && exceptions[e.name] !== effective) {
+          failures++;
+          error(`${label}: ${e.name}@${e.versions.join(",")} has license '${license}', not allowed`);
+        }
+        if (table && direct.has(e.name)) log(`| ${pkg} | ${e.name} | ${e.versions.join(", ")} | ${effective} |`);
+      }
+    }
+    if (!table) log(`${label}: ${count} production dependencies checked`);
+  }
+  return failures;
 }
-if (!table) console.log(`${manifest.name} (${manifest.license}): ${count} production dependencies checked\nJS licenses ok`);
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+  const config = (await import(pathToFileURL(join(root, "scripts", "js-licenses.config.mjs")).href)).default;
+  const table = process.argv.includes("--table");
+  const failures = check(root, config, { table });
+  if (failures > 0) {
+    console.error(`JS license check failed: ${failures} dependencies with licenses outside the allow-list`);
+    process.exit(1);
+  }
+  if (!table) console.log("JS licenses ok");
+}
