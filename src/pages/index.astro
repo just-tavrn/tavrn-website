@@ -70,7 +70,7 @@ const composeUrl = `https://github.com/${PUBLIC_GITHUB_ORG}/tavrn-node/tree/main
             <ArrowRight class="h-4 w-4" aria-hidden="true" />
           </a>
         </div>
-        <p class="mt-5 text-sm text-fg-2" set:html={rich(locale, "hero.status")} />
+        <p class="mt-5 text-sm text-fg-2" set:html={rich(locale, "hero.status", { guideHtml: `<a class="link" href="${localePath(locale, "/docs/admins/install/")}">${t(locale, "hero.status_guide")}</a>` })} />
       </div>
       <div class="relative mx-auto mt-12 max-w-5xl md:mt-16">
         <Shot scene="chat-desktop" priority />

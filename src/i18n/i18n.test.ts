@@ -42,7 +42,7 @@ describe("locale files", () => {
 
 describe("t and rich", () => {
   it("fills placeholders and writes the brand as text", () => {
-    expect(t("en", "hero.status")).toMatch(/^tavrn is in private review/);
+    expect(t("en", "hero.status")).toMatch(/^tavrn is open source and still in development/);
   });
 
   it("falls back to English for unknown locales and throws on unknown keys", () => {
