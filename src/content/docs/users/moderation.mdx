@@ -23,8 +23,11 @@ never get management permissions.
 
 Permissions come in layers. Roles give the base. A **category** can change a role's permissions for all its
 channels, and a **channel** can change them again for itself; the channel wins. A switch left at "–" takes the
-value from the layer below, which is shown in grey. **Reset to category** removes a channel's own changes. Members
-only see the channels they may view.
+value from the layer below, which is shown in grey, together with where it comes from: the roles, the category, or
+`@everyone` in the same layer (an `@everyone` override applies before a role's own). **Reset to category** removes
+a channel's own changes. Members only see the channels they may view.
+
+<Screenshot scene="overrides-hint-desktop" />
 
 ## Viewing the room as a role
 

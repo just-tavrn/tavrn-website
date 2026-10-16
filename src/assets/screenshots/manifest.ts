@@ -12,6 +12,7 @@ import adminFederationDesktop from "./admin-federation-desktop.png";
 import adminReportsDesktop from "./admin-reports-desktop.png";
 import botsDesktop from "./bots-desktop.png";
 import channelCreateDesktop from "./channel-create-desktop.png";
+import channelOrderDesktop from "./channel-order-desktop.png";
 import chatDesktop from "./chat-desktop.png";
 import chatPhone from "./chat-phone.png";
 import componentsDesktop from "./components-desktop.png";
@@ -24,6 +25,8 @@ import dmDesktop from "./dm-desktop.png";
 import emojiPickerDesktop from "./emoji-picker-desktop.png";
 import filesDesktop from "./files-desktop.png";
 import friendsDesktop from "./friends-desktop.png";
+import inviteRulesDesktop from "./invite-rules-desktop.png";
+import inviteRulesPhone from "./invite-rules-phone.png";
 import invitesDesktop from "./invites-desktop.png";
 import loginDesktop from "./login-desktop.png";
 import loginPhone from "./login-phone.png";
@@ -34,6 +37,7 @@ import menuNotificationsDesktop from "./menu-notifications-desktop.png";
 import moderationDesktop from "./moderation-desktop.png";
 import onboardingDesktop from "./onboarding-desktop.png";
 import onboardingRecoveryKeyDesktop from "./onboarding-recovery-key-desktop.png";
+import overridesHintDesktop from "./overrides-hint-desktop.png";
 import pollDateDesktop from "./poll-date-desktop.png";
 import pollDesktop from "./poll-desktop.png";
 import pollPhone from "./poll-phone.png";
@@ -300,6 +304,18 @@ export const screenshots = {
     caption: "Invite links with a use limit and an expiry; each can be revoked.",
     use: ["docs"],
   },
+  "invite-rules-desktop": {
+    image: inviteRulesDesktop,
+    alt: "The invite page of the room Night Owls Gaming with its illustrated icon and the member count, the room's rules rendered from Markdown with the headings Raid night and Always, a numbered list and a bulleted list with bold and italic words, the ticked box I accept the rules and the Join button.",
+    caption: "An invite link shows the room and its rules before you join; rules are written in Markdown and must be accepted first.",
+    use: ["docs"],
+  },
+  "invite-rules-phone": {
+    image: inviteRulesPhone,
+    alt: "The same invite page on a phone: the room icon, the name Night Owls Gaming, the rules with their headings and lists, the accepted rules and the Join button.",
+    caption: "The invite page on a phone.",
+    use: ["docs"],
+  },
   "channel-create-desktop": {
     image: channelCreateDesktop,
     alt: "The Create channel dialog with the channel type selector and the name patch-notes typed in.",
@@ -334,6 +350,18 @@ export const screenshots = {
     image: railFoldersDesktop,
     alt: "The room rail on the left with Night Owls Gaming and the expanded violet folder Hangouts holding Late Night Music, Indie Dev Lounge and Study Group; Late Night Music carries a green voice badge, and its room card shows the member count, the description and the avatars of Theo and Kai in its voice channel.",
     caption: "Group rooms into folders in the rail; badges and the room card show who is in voice without opening the room.",
+    use: ["docs"],
+  },
+  "channel-order-desktop": {
+    image: channelOrderDesktop,
+    alt: "Room settings, Channels, of Night Owls Gaming: the channel tree with a drag handle and up and down arrows on every channel and category, the channel screenshots dimmed while it is dragged onto the highlighted category Raids, which holds Raid Night and raid-signups, and the editor of the selected channel beside the tree.",
+    caption: "Channels and categories are reordered in the room settings: drag them by the handle or use the arrows.",
+    use: ["docs"],
+  },
+  "overrides-hint-desktop": {
+    image: overridesHintDesktop,
+    alt: "Room settings, Channels: the permissions of the category Raids for the role Night Owl beside the channel tree, every permission left neutral with its inherited value in grey: Read history from before joining denied by @everyone here, View channel, Add reactions and the others allowed or denied by the roles.",
+    caption: "A permission left neutral shows in grey what it inherits: from the roles, the category, or @everyone in the same layer.",
     use: ["docs"],
   },
   "settings-legal-desktop": {
