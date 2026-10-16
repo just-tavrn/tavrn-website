@@ -60,8 +60,8 @@ PATH=<venv>/bin:$PATH SHOTS_DATA=<work>/node \
 TAVRN_NODE_BIN=<tavrn-node build> TAVRN_WEB=<tavrn-web checkout> ./run.sh <work>/out
 ```
 
-against `tavrn-node 0.4.0-rc.8` (a debug build of tavrn-node `7a93d2a`, 2026-10-15) and tavrn-web `d875382`, with the
-`pnpm install` of that commit (its `@tavrn/bot` brings the message components).
+against `tavrn-node 0.4.0-rc.10` (a debug build of tavrn-node `090d3b7`, 2026-10-16) and tavrn-web `d764d45`
+(0.4.0-rc.10), with the `pnpm install` of that commit.
 
 Every scene is its own step: a failing scene is logged (`step <name>: FAILED …`) and skipped, the other scenes still
 run, and the test fails at the end with the list of failed steps.
@@ -91,6 +91,9 @@ All images are 2× (retina): desktop 1440×900 → 2880×1800 px, phone 390×844
 | `room-automod` | desktop | room settings → Auto-moderation with three rules | docs |
 | `roles` | desktop | room settings → Roles with the Moderator role | docs |
 | `invites` | desktop | room settings → Invites | docs |
+| `invite-rules` | desktop, phone | the invite page of Night Owls Gaming with its rules in Markdown (headings, lists, bold) accepted | docs |
+| `channel-order` | desktop | room settings → Channels: the channel tree with handles and arrows, a channel dragged onto the category Raids | docs |
+| `overrides-hint` | desktop | room settings → Channels: the category Raids for the role Night Owl, "Read history from before joining" inherited as denied by @everyone here | docs |
 | `voice-status` | desktop | the voice header with the channel status and the session timer, and the microphone's quick menu | docs |
 | `rail-folders` | desktop | the room rail with the folder Hangouts expanded, a voice badge and the room card of Late Night Music | docs |
 | `view-as-role` | desktop | the room previewed as the role Night Owl: the banner, the private channel hidden, the access marks | docs |

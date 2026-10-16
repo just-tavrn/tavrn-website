@@ -1055,6 +1055,25 @@ test("screenshots", async ({ browser }) => {
     await expect(mira.page.getByTestId("invite-row").first()).toBeVisible({ timeout: 15_000 });
     await shot(mira.page, "invites", { alt: "The Invites tab of the room settings with the form to create an invite link with a maximum number of uses and an expiry, and the list of active invites with their uses.", caption: "Invite links with a use limit and an expiry; each can be revoked." });
   });
+  // ---- Room rules in Markdown on the invite page (they are asked for on joining only, so they are set this late) ---
+  await step("invite-rules", async () => {
+    await api(mira.page, "PATCH", `/rooms/${room.id}`, mira.token, {
+      rules:
+        "### Raid night\n\n1. Be in **Raid Night** before the pull.\n2. **Flasks** from phase two.\n3. Sign up by Thursday.\n\n### Always\n\n- Be kind, **no spoilers**.\n- Loot is *need before greed*.\n",
+    });
+    const invite = await api(mira.page, "POST", `/rooms/${room.id}/invites`, mira.token, { max_uses: 1, expires_hours: 24 });
+    for (const vp of [DESKTOP, PHONE]) {
+      await kai.page.setViewportSize(vp);
+      await kai.page.goto(`/invite/${invite.code}`);
+      await expect(kai.page.getByTestId("invite-room-name")).toHaveText("Night Owls Gaming", { timeout: 30_000 });
+      await expect(kai.page.getByTestId("room-rules").locator("h3")).toHaveCount(2);
+      await kai.page.getByLabel("I accept the rules", { exact: true }).check();
+      await kai.page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+      if (vp === DESKTOP) await shot(kai.page, "invite-rules", { alt: "The invite page of the room Night Owls Gaming with its illustrated icon and the member count, the room's rules rendered from Markdown with the headings Raid night and Always, a numbered list and a bulleted list with bold and italic words, the ticked box I accept the rules and the Join button.", caption: "An invite link shows the room and its rules before you join; rules are written in Markdown and must be accepted first." });
+      else await shot(kai.page, "invite-rules", { alt: "The same invite page on a phone: the room icon, the name Night Owls Gaming, the rules with their headings and lists, the accepted rules and the Join button.", caption: "The invite page on a phone." });
+    }
+    await kai.page.setViewportSize(DESKTOP);
+  });
   await step("channel-create", async () => {
     await mira.page.goto(general);
     await mira.page.getByRole("button", { name: /Create channel/ }).click();
@@ -1193,6 +1212,47 @@ test("screenshots", async ({ browser }) => {
     await shot(mira.page, "rail-folders", { alt: "The room rail on the left with Night Owls Gaming and the expanded violet folder Hangouts holding Late Night Music, Indie Dev Lounge and Study Group; Late Night Music carries a green voice badge, and its room card shows the member count, the description and the avatars of Theo and Kai in its voice channel.", caption: "Group rooms into folders in the rail; badges and the room card show who is in voice without opening the room." }, { keepMouse: true });
     await mira.page.mouse.move(DESKTOP.width - 2, DESKTOP.height / 2);
     for (const u of [theo, kai]) await u.page.getByTestId("voice-leave").first().click({ timeout: 5_000 }).catch(() => undefined);
+  });
+
+  // ---- Room settings → Channels: reordering by drag and drop (a drag in progress), the override editor's hint -----
+  // A second category for the raid channels, made this late so the sidebars of the other scenes stay as they are.
+  let raidsCategory: string | null = null;
+  await step("channel-order", async () => {
+    const raids = await api(mira.page, "POST", `/rooms/${room.id}/categories`, mira.token, { name: "Raids" });
+    raidsCategory = raids.id;
+    for (const c of [raid, signups]) await api(mira.page, "PATCH", `/rooms/${room.id}/channels/${c.id}`, mira.token, { category_id: raids.id });
+    await mira.page.goto(`/rooms/${room.id}/settings/channels?channel=${screenshots.id}`);
+    const tree = mira.page.getByTestId("channel-tree");
+    await expect(tree.locator(`[data-testid="channel-tree-category"][data-category="${raids.id}"]`)).toBeVisible({ timeout: 15_000 });
+    // screenshots is picked up by its handle and held over the category Raids (the drop target's ring).
+    const row = tree.locator(`[data-testid="channel-tree-row"][data-channel="${screenshots.id}"]`);
+    const from = (await row.getByTestId("reorder-handle").boundingBox())!;
+    const to = (await tree.locator(`[data-testid="channel-tree-category"][data-category="${raids.id}"]`).boundingBox())!;
+    await mira.page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+    await mira.page.mouse.down();
+    await mira.page.mouse.move(from.x + 40, from.y + 10, { steps: 4 });
+    await mira.page.mouse.move(to.x + 60, to.y + to.height / 2, { steps: 12 });
+    // Playwright sends drag events on mouse moves only: a last small move inside the header, after the dragleave of
+    // its children, so the header keeps its drop ring.
+    await mira.page.mouse.move(to.x + 62, to.y + to.height / 2);
+    await expect(row).toHaveClass(/opacity-50/, { timeout: 5_000 });
+    await expect(tree.locator(`[data-testid="channel-tree-category"][data-category="${raids.id}"]`)).toHaveClass(/ring-2/, { timeout: 5_000 });
+    await shot(mira.page, "channel-order", { alt: "Room settings, Channels, of Night Owls Gaming: the channel tree with a drag handle and up and down arrows on every channel and category, the channel screenshots dimmed while it is dragged onto the highlighted category Raids, which holds Raid Night and raid-signups, and the editor of the selected channel beside the tree.", caption: "Channels and categories are reordered in the room settings: drag them by the handle or use the arrows." }, { keepMouse: true });
+    // Back over its own row: the drop changes nothing.
+    await mira.page.mouse.move(from.x + from.width / 2, from.y + from.height / 2, { steps: 12 });
+    await mira.page.mouse.up();
+    await expect(row).not.toHaveClass(/opacity-50/, { timeout: 5_000 });
+  });
+  // The category Raids starts every newcomer fresh: @everyone may not read the history from before joining there.
+  await step("overrides-hint", async () => {
+    if (!raidsCategory) throw new Error("the channel-order step did not create the category Raids");
+    await api(mira.page, "PUT", `/rooms/${room.id}/overrides`, mira.token, { target_type: "category", target_id: raidsCategory, subject_type: "role", subject_id: everyone, allow: "0", deny: bit(34).toString() });
+    await mira.page.goto(`/rooms/${room.id}/settings/channels?category=${raidsCategory}`);
+    const editor = mira.page.getByTestId("category-editor");
+    await expect(editor).toBeVisible({ timeout: 15_000 });
+    await editor.getByRole("combobox", { name: "Role", exact: true }).selectOption({ label: "Night Owl" });
+    await expect(editor.getByTestId("inherited-READ_HISTORY")).toHaveText("Inherited: denied by @everyone here", { timeout: 15_000 });
+    await shot(mira.page, "overrides-hint", { alt: "Room settings, Channels: the permissions of the category Raids for the role Night Owl beside the channel tree, every permission left neutral with its inherited value in grey: Read history from before joining denied by @everyone here, View channel, Add reactions and the others allowed or denied by the roles.", caption: "A permission left neutral shows in grey what it inherits: from the roles, the category, or @everyone in the same layer." });
   });
 
   // ---- Legal documents and the legal settings tab ------------------------------------------------------------
