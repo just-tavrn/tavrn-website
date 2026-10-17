@@ -29,8 +29,9 @@ time on it. If you are not sure where something belongs, open a discussion.
 Contributions are accepted under a short
 [contributor license agreement](https://github.com/just-tavrn/.github/blob/main/CLA.md). You sign it once, with a
 single comment on your first pull request, when the CLA bot asks for it. You keep the copyright of your work. The
-agreement lets the project offer additional licenses next to the open-source ones, and it comes with a written
-promise: everything published under an open-source license stays available under it.
+agreement confirms contributions under the existing project licenses; it grants no additional relicensing
+rights. Official development stays public in just-tavrn. Paid hosting by the project and independent providers
+is welcome. Existing public license grants remain in effect.
 
 ## Licenses
 
@@ -49,14 +50,16 @@ Each repository has the license that fits its role:
 
 The node is AGPL-3.0-only so that improvements of a hosted node stay open. The clients, the SDK and the bot runtime
 are Apache-2.0, so anyone can build clients, bots and integrations. The encryption code is MPL-2.0: you can embed
-it anywhere, but changes to the encryption itself are published.
+it anywhere, but distributed modifications to its MPL files must be made available in source form.
 
 The pages of this wiki that are copied from other repositories keep the license of their source; each of them
 says which at the bottom.
 
 ## The name and the logo
 
-The name "tavrn" and the logo are not covered by these licenses. You may run tavrn under its name for yourself,
-your community or your company, also with your own configuration and local patches. Distributing a modified
-version under the name, or running a hosting business under it, needs permission. The details and examples are in
-the [trademark policy](https://github.com/just-tavrn/.github/blob/main/TRADEMARK.md).
+The name "tavrn" and the logo are not covered by these licenses. Independent providers may advertise
+"Managed hosting for tavrn by ExampleHost" and keep the original branding in unmodified deployments.
+Identify your own business clearly and do not imply official affiliation. Local operational and bug-fix
+patches are permitted as described in the
+[trademark policy](https://github.com/just-tavrn/.github/blob/main/TRADEMARK.md); separately marketed forks
+need their own product identity unless permission is granted.
