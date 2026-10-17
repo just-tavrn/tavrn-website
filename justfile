@@ -92,4 +92,8 @@ publish-check:
 
 # Everything: the strict docs sync, typecheck, build, unit and dist tests, SPDX, licenses, publication hygiene,
 # Caddyfile, end-to-end
-check: sync-docs-strict typecheck build test spdx licenses publish-check caddy-validate e2e
+check: ci-filter-test sync-docs-strict typecheck build test spdx licenses publish-check caddy-validate e2e
+
+# Verify documentation-only CI and image skips without building the website
+ci-filter-test:
+    bash scripts/ci-changes.test.sh

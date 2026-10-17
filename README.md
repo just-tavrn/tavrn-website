@@ -302,3 +302,17 @@ The code is licensed under [Apache-2.0](LICENSE-APACHE), the texts and screensho
 [CC-BY-4.0](LICENSE-CC-BY-4.0); [LICENSE.md](LICENSE.md) has the details and the attribution we ask for. The name
 "tavrn", the logo and the icons are not covered by these licenses; see the [trademark policy](TRADEMARK.md).
 Contributions are accepted under the [contributor license agreement](CLA.md).
+
+## Builds and documentation changes
+
+`ci.yml` and `image.yml` use `scripts/ci-changes.sh` to skip application checks and container builds for
+repository administration only (root contribution/brand/readme documents, `docs/`, issue templates and the
+CLA, secret-scan and dependency-review workflows). CLA, secret scans, publication hygiene and the lightweight
+change-filter/SPDX check still run. Unknown paths, application code, dependencies, deployment files and the
+CI/image workflows trigger checks and builds. Manual runs and release tags always build.
+
+Website pages and wiki content under `src/`, including Markdown and MDX, always trigger builds, as do changes
+to `sources/`, `.gitmodules` and the docs-sync scripts. Upstream repository docs reach the website through
+its pinned source submodules: merge their updates here to rebuild the imported documentation. Root repository
+README/CLA/brand texts are not the website wiki. The privacy-page change in this branch therefore correctly
+runs the website build and browser checks; the CLA workflow alone would not.

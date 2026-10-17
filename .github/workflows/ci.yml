@@ -18,11 +18,33 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: What changed
+    if: ${{ vars.CI_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      build: ${{ steps.classify.outputs.build }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - id: classify
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          EVENT_NAME: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+        run: bash scripts/ci-changes.sh >> "$GITHUB_OUTPUT"
+
   js:
     name: JavaScript
+    needs: changes
     if: ${{ vars.CI_ENABLED == 'true' }}
     uses: just-tavrn/.github/.github/workflows/js-ci.yml@main
     with:
+      skip: ${{ needs.changes.outputs.build != 'true' }}
       # SPDX headers and dependency licenses (the reusable workflow's defaults), the docs sync without any warning
       # (--strict: no link to a vanished anchor, no configured section or replacement that no longer matches), astro
       # check, then the build before the tests, because tests/dist.test.ts checks the built site (JavaScript budget,
@@ -40,8 +62,8 @@ jobs:
   e2e:
     name: End-to-end (Chromium, Android emulation)
     # Against the dist/ of the JavaScript job (no second build: sharp encoded every screenshot again).
-    needs: js
-    if: ${{ vars.CI_ENABLED == 'true' }}
+    needs: [changes, js]
+    if: ${{ vars.CI_ENABLED == 'true' && needs.changes.outputs.build == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -82,7 +104,8 @@ jobs:
 
   caddyfile:
     name: Caddyfile
-    if: ${{ vars.CI_ENABLED == 'true' }}
+    needs: changes
+    if: ${{ vars.CI_ENABLED == 'true' && needs.changes.outputs.build == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -113,3 +136,15 @@ jobs:
     # source in just-tavrn/.github apart from their SPDX line (its docs/GITHUB.md "Shared scripts").
     if: ${{ vars.CI_ENABLED == 'true' }}
     uses: just-tavrn/.github/.github/workflows/shared-scripts.yml@main
+
+  change-filter:
+    name: Change filter and SPDX
+    if: ${{ vars.CI_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: bash scripts/ci-changes.test.sh
+      - run: bash scripts/check-spdx.sh
