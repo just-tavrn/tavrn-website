@@ -2,12 +2,10 @@
 // Mermaid diagrams in the docs: drawn in the browser on pages that have one (src/lib/mermaid-render.ts), under the
 // production CSP, without foreign requests or browser storage, accessible, and never wider than the page. Pages
 // without a diagram do not load Mermaid at all.
-import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
-import { enforceProductionCsp } from "../helpers";
+import { enforceProductionCsp, seriousAxeFindings } from "../helpers";
 
 const DIAGRAMS = "/docs/developers/architecture/";
-const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22a", "wcag22aa"];
 
 test("the architecture page draws its diagrams with accessible names and keeps the source", async ({ page }) => {
   await page.goto(DIAGRAMS);
@@ -85,11 +83,7 @@ test("the diagram page has no serious or critical axe findings", async ({ page }
   await page.waitForFunction(() =>
     [...document.querySelectorAll(".expressive-code pre")].every((pre) => pre.scrollWidth <= pre.clientWidth || pre.hasAttribute("tabindex")),
   );
-  const results = await new AxeBuilder({ page }).withTags(TAGS).analyze();
-  const serious = results.violations
-    .filter((v) => v.impact === "serious" || v.impact === "critical")
-    .map((v) => `${v.id} (${v.impact}): ${v.nodes.map((n) => n.target.join(" ")).slice(0, 5).join(", ")}`);
-  expect(serious).toEqual([]);
+  expect(await seriousAxeFindings(page)).toEqual([]);
 });
 
 test("a docs page without a diagram loads no Mermaid", async ({ page }) => {

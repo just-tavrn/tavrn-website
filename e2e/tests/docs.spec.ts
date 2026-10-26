@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // The wiki: the landing with its three audiences, one page of every group, the anchors of the configuration
 // reference, the search (Pagefind), keyboard navigation of the sidebar, and axe on these routes.
-import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page, test } from "@playwright/test";
-
-const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22a", "wcag22aa"];
+import { seriousAxeFindings } from "../helpers";
 
 const PAGES = [
   { path: "/docs/", heading: "tavrn docs" },
@@ -120,10 +118,6 @@ for (const { path } of PAGES) {
     await page.waitForFunction(() =>
       [...document.querySelectorAll(".expressive-code pre")].every((pre) => pre.scrollWidth <= pre.clientWidth || pre.hasAttribute("tabindex")),
     );
-    const results = await new AxeBuilder({ page }).withTags(TAGS).analyze();
-    const serious = results.violations
-      .filter((v) => v.impact === "serious" || v.impact === "critical")
-      .map((v) => `${v.id} (${v.impact}): ${v.nodes.map((n) => n.target.join(" ")).slice(0, 5).join(", ")}`);
-    expect(serious).toEqual([]);
+    expect(await seriousAxeFindings(page)).toEqual([]);
   });
 }
