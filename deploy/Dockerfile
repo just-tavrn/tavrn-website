@@ -25,7 +25,7 @@ RUN pnpm build
 # which drops the file capability cap_net_bind_service the caddy image's binary carries (an unprivileged
 # container with cap_drop ALL and no-new-privileges may not execute a binary with file capabilities; :8080
 # needs none) and keeps it to one layer of ~40 MB. A plain COPY --from would preserve the capability.
-FROM caddy:2-alpine@sha256:d8542f48d34a9cf4e4c11a478865229840e87e4c96ea3f439101f31a5d35f75f AS caddy
+FROM caddy:2-alpine@sha256:78bd35025c7ba85961dd149ae670315129954e77abe2383ac47c89106b35ade9 AS caddy
 FROM alpine:3.24@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
 LABEL org.opencontainers.image.title="tavrn-website" \
       org.opencontainers.image.description="The tavrn website (tavrn.org): static site served by Caddy" \
