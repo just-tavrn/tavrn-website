@@ -110,6 +110,15 @@ describe.skipIf(!built)("built site", () => {
     console.log(`Mermaid (all lazy chunks, loaded in part on diagram pages): ${lazy.size} files, ${(total / 1024).toFixed(1)} KB gzipped`);
   });
 
+  it("ships the stub instead of the ELK layout engine (elkjs is not bundled, astro.config.mjs)", () => {
+    const scripts = readdirSync(join(dist, "_astro")).filter((f) => f.endsWith(".js"));
+    // elkjs' code is full of its Java package names; Mermaid's own chunks carry none of them.
+    for (const f of scripts) expect(read(`/_astro/${f}`), f).not.toContain("org.eclipse.elk");
+    const elk = scripts.filter((f) => /^elk-[\w.-]+\.js$/.test(f));
+    expect(elk.length, "Mermaid's lazy ELK chunk").toBeGreaterThan(0);
+    for (const f of elk) expect(read(`/_astro/${f}`), f).toContain("The ELK layout is not part of this site");
+  });
+
   it("lists the hash of every inline script in csp-script-hashes.txt", () => {
     const list = readFileSync(join(root, "csp-script-hashes.txt"), "utf8");
     for (const page of pages) {

@@ -30,9 +30,9 @@ function noSidebarStorage() {
 }
 
 /**
- * Mermaid ships the ELK layout engine (elkjs, EPL-2.0, 440 KB gzipped) as a lazy chunk. The docs draw with dagre
- * (src/lib/mermaid-render.ts), so the chunk becomes a stub: elkjs never enters the build, and a diagram that asks
- * for an ELK layout shows its source instead.
+ * Mermaid ships the ELK layout engine (elkjs, EPL-2.0 OR GPL-3.0-or-later, 470 KB gzipped) as a lazy chunk. The
+ * docs draw with dagre (src/lib/mermaid-render.ts), so the chunk becomes a stub: elkjs never enters the build, and a
+ * diagram that asks for an ELK layout shows its source instead.
  */
 function noElkLayout() {
   return {
