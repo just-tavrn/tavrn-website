@@ -21,7 +21,8 @@ export default {
     // runs at build time only.
     "caniuse-lite": "CC-BY-4.0",
     // Mermaid's ELK layout engine: astro.config.mjs replaces the chunk that imports it by a stub (the docs draw with
-    // dagre), so it is installed but never bundled.
-    elkjs: "EPL-2.0",
+    // dagre), so it is installed but never bundled. Since 0.12.0 it is dual-licensed (before EPL-2.0 alone); the
+    // entry matches the whole expression, and we use it under EPL-2.0 as before.
+    elkjs: "EPL-2.0 OR GPL-3.0-or-later",
   },
 };
