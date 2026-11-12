@@ -182,21 +182,28 @@ test("the status page has no serious axe findings, operational with history and 
   expect(await seriousAxe(other)).toEqual([]);
 });
 
-test("the status page keeps its layout while the check runs", async ({ page }) => {
-  let release: () => void = () => {};
-  const gate = new Promise<void>((r) => (release = r));
-  await mockRuntime(page);
-  await page.route("https://node.example/healthz", async (route) => {
-    await gate;
-    await route.fulfill({ contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify(HEALTH_OK) });
+test.describe("with a wide check time", () => {
+  // "Last checked 12:22:29 AM" (two-digit hour, en-US) is one pixel wider than the room beside the Refresh button on
+  // the Pixel 7: before the fix the time wrapped below the button only once the check had run, the card grew by
+  // 32px, and the test failed or passed by the hour of the run. Pin the clock to that time.
+  test.use({ locale: "en-US", timezoneId: "UTC" });
+  test("the status page keeps its layout while the check runs", async ({ page }) => {
+    await page.clock.setSystemTime(new Date("2026-11-12T00:22:29Z"));
+    let release: () => void = () => {};
+    const gate = new Promise<void>((r) => (release = r));
+    await mockRuntime(page);
+    await page.route("https://node.example/healthz", async (route) => {
+      await gate;
+      await route.fulfill({ contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify(HEALTH_OK) });
+    });
+    await page.goto("/status");
+    await expect(state(page)).toHaveText("Checking the node…");
+    const box = async () => (await page.locator(".ns-head").boundingBox())!.height;
+    const before = await box();
+    release();
+    await expect(state(page)).toHaveText("Operational");
+    expect(Math.abs((await box()) - before)).toBeLessThanOrEqual(2);
   });
-  await page.goto("/status");
-  await expect(state(page)).toHaveText("Checking the node…");
-  const box = async () => (await page.locator(".ns-head").boundingBox())!.height;
-  const before = await box();
-  release();
-  await expect(state(page)).toHaveText("Operational");
-  expect(Math.abs((await box()) - before)).toBeLessThanOrEqual(2);
 });
 
 test("the status page and the dot work under the production CSP with the default node", async ({ page }) => {

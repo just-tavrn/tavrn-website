@@ -6,7 +6,3 @@ packages:
 allowBuilds:
   esbuild: true
   sharp: true
-
-# Exempt from pnpm's minimum release age (installed while the release was fresh); drop at the next update.
-minimumReleaseAgeExclude:
-  - "@lucide/astro@1.54.0"

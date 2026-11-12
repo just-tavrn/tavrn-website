@@ -170,7 +170,10 @@ const strings = Object.fromEntries(
     cursor: not-allowed;
     opacity: 0.6;
   }
+  /* Its own line, reserved before the first check: beside the button it fit or wrapped by the width of the time
+     ("12:22:29 AM" is wider than "1:41:10 PM"), and the card grew once the check had run. */
   .ns-time {
+    flex-basis: 100%;
     min-height: 1.5rem;
     color: var(--color-fg-2);
     font-size: 0.875rem;
